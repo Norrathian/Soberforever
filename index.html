@@ -162,6 +162,37 @@
   .stat3 .k{font-size:.72rem; color:var(--muted);}
   footer{max-width:640px; margin:0 auto; padding:0 14px 8px; text-align:center;}
   footer p{font-size:.75rem; color:var(--muted);}
+  /* new: triggers, habits, water, charts, contacts */
+  .chips{display:flex; gap:8px; flex-wrap:wrap;}
+  .chips button{padding:8px 14px; font-size:.85rem; background:var(--bg2); color:var(--text); border:1px solid var(--line); box-shadow:none; border-radius:999px;}
+  .chips button.on{background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; border-color:transparent;}
+  .habitrow{display:flex; align-items:center; gap:10px; padding:9px 4px; border-bottom:1px solid var(--line);}
+  .habitrow:last-child{border-bottom:none;}
+  .habitcheck{width:30px; height:30px; border-radius:9px; border:2px solid var(--line); background:var(--bg2); flex:0 0 auto; display:flex; align-items:center; justify-content:center; font-size:1rem; color:#fff; cursor:pointer;}
+  .habitcheck.on{background:var(--good); border-color:var(--good);}
+  .habitname{flex:1; font-weight:600;}
+  .habitstreak{font-size:.75rem; color:var(--muted); white-space:nowrap;}
+  .iconbtn{background:transparent; color:var(--muted); box-shadow:none; padding:4px 8px; font-size:.85rem;}
+  .waterbtns{display:flex; gap:18px; justify-content:center; align-items:center; margin:10px 0;}
+  .waterbtns button{width:58px; height:58px; border-radius:50%; font-size:1.7rem; padding:0;}
+  #waterCount{font-size:2.4rem; font-weight:800;}
+  .wstrip{display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-top:10px;}
+  .wday{background:var(--bg2); border:1px solid var(--line); border-radius:10px; padding:6px 2px; text-align:center; font-size:.7rem;}
+  .wday .b{height:38px; display:flex; align-items:flex-end; justify-content:center;}
+  .wday .fill{background:var(--accent2); border-radius:4px; width:14px; min-height:3px;}
+  .wday.today{border-color:var(--accent);}
+  .chartbox{background:var(--bg2); border:1px solid var(--line); border-radius:12px; padding:10px; margin-top:10px;}
+  .legend{display:flex; gap:14px; flex-wrap:wrap; font-size:.75rem; color:var(--muted); margin-top:6px;}
+  .legend .sw{display:inline-block; width:18px; height:4px; border-radius:2px; vertical-align:middle; margin-right:4px;}
+  .pbar{display:flex; align-items:center; gap:8px; margin:6px 0; font-size:.85rem;}
+  .pbar .pl{width:92px; flex:0 0 auto;}
+  .pbar .track{flex:1; background:var(--bg2); border:1px solid var(--line); border-radius:999px; height:12px; overflow:hidden;}
+  .pbar .fillbar{height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); border-radius:999px;}
+  .pbar .pc{width:30px; text-align:right; color:var(--muted);}
+  .contactrow{display:flex; align-items:center; gap:10px; padding:10px 4px; border-bottom:1px solid var(--line);}
+  .contactrow:last-child{border-bottom:none;}
+  .contactrow a.tel{flex:1; text-decoration:none; color:var(--text); font-weight:700; font-size:1.05rem; display:block; padding:10px 12px; background:var(--bg2); border:1px solid var(--line); border-radius:12px;}
+  .contactrow a.tel small{display:block; font-weight:400; color:var(--muted); font-size:.8rem;}
 </style>
 </head>
 <body>
@@ -226,9 +257,30 @@
       <div class="dots" id="moodRow"></div>
       <label class="lbl">Craving (1&ndash;5)</label>
       <div class="dots" id="cravingRow"></div>
+      <label class="lbl">What sparked the craving? (optional)</label>
+      <div class="chips" id="triggerTags"></div>
       <label class="lbl" for="ciNote">Note (optional)</label>
       <textarea id="ciNote" placeholder="Anything worth remembering about today..."></textarea>
       <button id="ciSave" class="mt12" style="width:100%;">Save check-in</button>
+    </div>
+
+    <div class="card">
+      <h2>&#x1F331; Daily habits</h2>
+      <div id="habitList"></div>
+      <div class="row mt8">
+        <input id="habitInput" placeholder="New habit — e.g. morning walk" style="flex:1; min-width:160px;">
+        <button id="habitAdd" class="small">Add</button>
+      </div>
+    </div>
+
+    <div class="card center">
+      <h2>&#x1F4A7; Water</h2>
+      <div class="waterbtns">
+        <button id="waterMinus" aria-label="One less glass">&minus;</button>
+        <div><span id="waterCount">0</span><div class="muted" id="waterGlassWord">glasses today</div></div>
+        <button id="waterPlus" aria-label="One more glass">+</button>
+      </div>
+      <div class="wstrip" id="waterStrip"></div>
     </div>
   </section>
 
@@ -256,6 +308,50 @@
       <h2>&#x1F4CA; 7-day rhythm</h2>
       <div class="rhythm" id="rhythmStrip"></div>
       <p class="muted mt8" style="margin-bottom:0;">A quiet look at your week — patterns, not judgments.</p>
+    </div>
+
+    <div class="card">
+      <h2>&#x2696;&#xFE0F; Weight</h2>
+      <div class="stat3">
+        <div class="s"><div class="v" id="wCurrent">&mdash;</div><div class="k">current</div></div>
+        <div class="s"><div class="v" id="wChange">&mdash;</div><div class="k">change</div></div>
+        <div class="s"><div class="v" id="wGoal">&mdash;</div><div class="k">goal</div></div>
+      </div>
+      <div class="chartbox"><div id="weightChart"></div>
+        <div class="legend">
+          <span><span class="sw" style="background:var(--accent);"></span>Weight</span>
+          <span><span class="sw" style="background:var(--warn);"></span>7-day avg</span>
+          <span><span class="sw" style="background:var(--good);"></span>Goal</span>
+          <span><span class="sw" style="background:var(--accent2);"></span>Sober days (scaled)</span>
+        </div>
+      </div>
+      <div class="row mt12">
+        <input type="date" id="wDate" style="flex:1; min-width:130px;">
+        <input type="number" id="wVal" min="0" step="0.1" inputmode="decimal" placeholder="Weight" style="flex:1; min-width:100px;">
+        <span class="muted" id="wUnitLabel">lbs</span>
+        <button id="wAdd" class="small">Log</button>
+      </div>
+      <p class="muted mt8" style="margin-bottom:0;">Set your unit and goal weight in Settings.</p>
+      <div id="weighInList" class="mt8"></div>
+    </div>
+
+    <div class="card">
+      <h2>&#x1F634; Sleep</h2>
+      <div class="chartbox"><div id="sleepChart"></div>
+        <p class="muted" style="margin:6px 0 0;">Darker bars = better quality. Green ticks = days since your sober date.</p>
+      </div>
+      <div class="row mt12">
+        <input type="date" id="sleepDate" style="flex:1; min-width:130px;">
+        <input type="number" id="sleepHours" min="0" max="24" step="0.5" inputmode="decimal" placeholder="Hours" style="flex:1; min-width:90px;">
+      </div>
+      <label class="lbl">Quality (1&ndash;5)</label>
+      <div class="dots" id="sleepQRow"></div>
+      <button id="sleepSave" class="small mt8">Log sleep</button>
+    </div>
+
+    <div class="card">
+      <h2>&#x1F50D; Craving patterns</h2>
+      <div id="patternBars"></div>
     </div>
 
     <div class="card">
@@ -292,6 +388,16 @@
     </div>
 
     <div class="card">
+      <h2>&#x1F64F; Gratitude</h2>
+      <p class="muted" style="margin-top:0;">One sentence. What are you grateful for today?</p>
+      <div class="row">
+        <input id="gratInput" placeholder="e.g. Woke up clear-headed..." style="flex:1; min-width:180px;">
+        <button id="gratAdd" class="small">Add</button>
+      </div>
+      <div id="gratitudeList" class="mt12"></div>
+    </div>
+
+    <div class="card">
       <h2>&#x1F4D3; Journal</h2>
       <label class="lbl" for="jTitle">Title</label>
       <input id="jTitle" placeholder="Entry title">
@@ -307,6 +413,12 @@
     <div class="card center">
       <h2>&#x1F6A8; Craving SOS</h2>
       <p class="muted">This feeling is temporary. It will pass — let's ride it out together.</p>
+    </div>
+
+    <div class="card">
+      <h2>&#x1F4DE; My people</h2>
+      <div id="sosContactsList"></div>
+      <p class="muted" style="margin-bottom:0;">Add names and numbers in Settings — one tap calls someone you trust.</p>
     </div>
 
     <div class="card">
@@ -414,6 +526,26 @@
         <option value="sunrise">Sunrise</option>
         <option value="ocean">Ocean</option>
       </select>
+      <div class="grid2">
+        <div>
+          <label class="lbl" for="setWeightUnit">Weight unit</label>
+          <select id="setWeightUnit">
+            <option value="lbs">lbs</option>
+            <option value="kg">kg</option>
+          </select>
+        </div>
+        <div>
+          <label class="lbl" for="setGoalWeight">Goal weight (optional)</label>
+          <input type="number" id="setGoalWeight" min="0" step="0.1" inputmode="decimal" placeholder="e.g. 180">
+        </div>
+      </div>
+      <h3>&#x1F4DE; SOS quick contacts</h3>
+      <div id="contactSettingsList"></div>
+      <div class="row mt8">
+        <input id="contactName" placeholder="Name" style="flex:1; min-width:110px;">
+        <input id="contactPhone" type="tel" placeholder="Phone" style="flex:1; min-width:130px;" inputmode="tel">
+        <button id="contactAdd" class="small">Add</button>
+      </div>
       <button id="setSave" class="mt12" style="width:100%;">Save settings</button>
     </div>
 
@@ -470,7 +602,10 @@ function defaultState(){
     dailySpend:0, theme:"dark",
     meetingName:"Sundowners", meetingTime:"17:30",
     checkins:{}, pledges:[], wins:[], journal:[], reasons:[],
-    meetings:[], celebrated:[]
+    meetings:[], celebrated:[],
+    weighIns:[], weightUnit:"lbs", goalWeight:null,
+    sleepLog:{}, habits:[], gratitude:[],
+    sosContacts:[], water:{}
   };
 }
 function loadState(){
@@ -766,6 +901,8 @@ function renderCheckin(){
     $("ciNote").value = "";
     $("ciTodayStatus").textContent = "Not logged yet today — no pressure either way.";
   }
+  ciTriggers = c ? (c.triggers || []).slice() : [];
+  renderTriggerTags();
   buildDots("moodRow", ciMood, function(v){ ciMood = v; });
   buildDots("cravingRow", ciCraving, function(v){ ciCraving = v; });
 }
@@ -773,7 +910,7 @@ $("ciSave").addEventListener("click", function(){
   const k = $("checkinDate").value || todayKey();
   state.checkins[k] = {
     status: ciStatus, mood: ciMood, craving: ciCraving,
-    note: $("ciNote").value.trim()
+    note: $("ciNote").value.trim(), triggers: ciTriggers.slice()
   };
   saveState();
   $("ciTodayStatus").textContent = ciStatus === "sober"
@@ -893,33 +1030,52 @@ $("winAdd").addEventListener("click", function(){
 let editingJournalId = null;
 function renderJournal(){
   const el = $("journalList");
-  if(!state.journal.length){ el.innerHTML = '<p class="muted">Your journal is empty. Write the first entry whenever you like.</p>'; return; }
+  const items = state.journal.map(function(j){ return {kind:"j", date:j.date, ref:j}; })
+    .concat(state.gratitude.map(function(g){ return {kind:"g", date:g.date, ref:g}; }))
+    .sort(function(a,b){ return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0); })
+    .reverse();
+  if(!items.length){ el.innerHTML = '<p class="muted">Your journal is empty. Write the first entry whenever you like.</p>'; return; }
   el.innerHTML = "";
-  state.journal.slice().reverse().forEach(function(j){
+  items.forEach(function(it){
     const div = document.createElement("div");
     div.className = "item";
-    div.innerHTML = '<div class="meta">' + esc(fmtDate(j.date)) + '</div>' +
-      '<div style="font-weight:700;">' + esc(j.title || "Untitled") + "</div>" +
-      '<div style="white-space:pre-wrap;">' + esc(j.body) + "</div>";
     const acts = document.createElement("div");
     acts.className = "actions";
-    const ed = document.createElement("button");
-    ed.className = "small ghost"; ed.textContent = "Edit";
-    ed.addEventListener("click", function(){
-      editingJournalId = j.id;
-      $("jTitle").value = j.title || "";
-      $("jBody").value = j.body || "";
-      $("jAdd").textContent = "Save changes";
-      window.scrollTo(0, $("jTitle").offsetTop - 80);
-    });
-    const del = document.createElement("button");
-    del.className = "small ghost"; del.textContent = "Delete";
-    del.addEventListener("click", function(){
-      if(!confirm("Delete this journal entry?")) return;
-      state.journal = state.journal.filter(function(q){ return q.id !== j.id; });
-      saveState(); renderJournal();
-    });
-    acts.appendChild(ed); acts.appendChild(del); div.appendChild(acts); el.appendChild(div);
+    if(it.kind === "j"){
+      const j = it.ref;
+      div.innerHTML = '<div class="meta">' + esc(fmtDate(j.date)) + '</div>' +
+        '<div style="font-weight:700;">' + esc(j.title || "Untitled") + "</div>" +
+        '<div style="white-space:pre-wrap;">' + esc(j.body) + "</div>";
+      const ed = document.createElement("button");
+      ed.className = "small ghost"; ed.textContent = "Edit";
+      ed.addEventListener("click", function(){
+        editingJournalId = j.id;
+        $("jTitle").value = j.title || "";
+        $("jBody").value = j.body || "";
+        $("jAdd").textContent = "Save changes";
+        window.scrollTo(0, $("jTitle").offsetTop - 80);
+      });
+      const del = document.createElement("button");
+      del.className = "small ghost"; del.textContent = "Delete";
+      del.addEventListener("click", function(){
+        if(!confirm("Delete this journal entry?")) return;
+        state.journal = state.journal.filter(function(q){ return q.id !== j.id; });
+        saveState(); renderJournal();
+      });
+      acts.appendChild(ed); acts.appendChild(del);
+    } else {
+      const g = it.ref;
+      div.innerHTML = '<div class="meta">' + esc(fmtDate(g.date)) + ' \u2022 gratitude</div><div>&#x1F64F; ' + esc(g.text) + "</div>";
+      const del = document.createElement("button");
+      del.className = "small ghost"; del.textContent = "Delete";
+      del.addEventListener("click", function(){
+        state.gratitude = state.gratitude.filter(function(q){ return q.id !== g.id; });
+        saveState(); renderJournal(); renderGratitude();
+      });
+      acts.appendChild(del);
+    }
+    div.appendChild(acts);
+    el.appendChild(div);
   });
 }
 $("jAdd").addEventListener("click", function(){
@@ -1104,6 +1260,8 @@ function renderSettings(){
   $("setMtgName").value = state.meetingName || "";
   $("setMtgTime").value = state.meetingTime || "17:30";
   $("setTheme").value = state.theme || "dark";
+  $("setWeightUnit").value = weightUnit();
+  $("setGoalWeight").value = state.goalWeight != null ? fmtWn(state.goalWeight) : "";
 }
 $("setSave").addEventListener("click", function(){
   const dv = $("setDate").value;
@@ -1113,6 +1271,9 @@ $("setSave").addEventListener("click", function(){
   state.meetingName = $("setMtgName").value.trim() || "Sundowners";
   state.meetingTime = $("setMtgTime").value || "17:30";
   state.theme = $("setTheme").value;
+  state.weightUnit = $("setWeightUnit").value === "kg" ? "kg" : "lbs";
+  const gw = parseFloat($("setGoalWeight").value);
+  state.goalWeight = gw > 0 ? toLbs(gw) : null;
   applyTheme(); saveState(); renderAll();
   alert("Settings saved.");
 });
@@ -1159,6 +1320,373 @@ $("resetBtn").addEventListener("click", function(){
   maybeOnboard();
 });
 
+/* ============ TRIGGER TAGS & PATTERNS ============ */
+const TRIGGERS = ["Stress","Place","People","Habit","Emotion","Other"];
+let ciTriggers = [];
+function renderTriggerTags(){
+  const el = $("triggerTags");
+  el.innerHTML = "";
+  TRIGGERS.forEach(function(t){
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = t;
+    if(ciTriggers.indexOf(t) !== -1) b.classList.add("on");
+    b.addEventListener("click", function(){
+      const i = ciTriggers.indexOf(t);
+      if(i === -1) ciTriggers.push(t); else ciTriggers.splice(i,1);
+      b.classList.toggle("on");
+    });
+    el.appendChild(b);
+  });
+}
+function renderPatterns(){
+  const el = $("patternBars");
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-30);
+  const counts = {}; TRIGGERS.forEach(function(t){ counts[t] = 0; });
+  let total = 0;
+  Object.keys(state.checkins).forEach(function(k){
+    if(keyToDate(k) < cutoff) return;
+    const c = state.checkins[k];
+    (c.triggers || []).forEach(function(t){
+      if(counts[t] != null){ counts[t]++; total++; }
+    });
+  });
+  if(!total){
+    el.innerHTML = '<p class="muted" style="margin:0;">No trigger tags yet — tag what sparks a craving when you check in, and your patterns will show up here.</p>';
+    return;
+  }
+  const max = Math.max.apply(null, TRIGGERS.map(function(t){ return counts[t]; }));
+  let html = "";
+  TRIGGERS.forEach(function(t){
+    const pct = max ? Math.round(counts[t]/max*100) : 0;
+    html += '<div class="pbar"><div class="pl">' + esc(t) + '</div>' +
+      '<div class="track"><div class="fillbar" style="width:' + pct + '%"></div></div>' +
+      '<div class="pc">' + counts[t] + "</div></div>";
+  });
+  html += '<p class="muted mt8" style="margin-bottom:0;">From your check-ins over the last 30 days. Knowing your triggers is half the battle.</p>';
+  el.innerHTML = html;
+}
+
+/* ============ WEIGHT TRACKER ============ */
+function weightUnit(){ return state.weightUnit === "kg" ? "kg" : "lbs"; }
+function toDisplay(lbs){ return weightUnit() === "kg" ? lbs * 0.45359237 : lbs; }
+function toLbs(v){ return weightUnit() === "kg" ? v / 0.45359237 : v; }
+function fmtWn(lbs){
+  const v = toDisplay(lbs);
+  return weightUnit() === "kg" ? (Math.round(v*10)/10) : Math.round(v);
+}
+function rollingAvg(items, i){
+  const t = items[i].ts;
+  let sum = 0, n = 0;
+  for(let j=i; j>=0; j--){
+    if(t - items[j].ts <= 7*86400000){ sum += items[j].w; n++; } else break;
+  }
+  return n ? sum/n : items[i].w;
+}
+function renderWeight(){
+  const unit = weightUnit();
+  $("wUnitLabel").textContent = unit;
+  $("wDate").value = todayKey();
+  const items = state.weighIns.slice().sort(function(a,b){ return a.ts - b.ts; });
+  if(!items.length){
+    $("wCurrent").textContent = "\u2014"; $("wChange").textContent = "\u2014"; $("wGoal").textContent = "\u2014";
+    $("weightChart").innerHTML = '<p class="muted" style="margin:0;">Log your first weigh-in below to start your trend.</p>';
+  } else {
+    const cur = items[items.length-1].w;
+    const diff = cur - items[0].w;
+    $("wCurrent").textContent = fmtWn(cur) + " " + unit;
+    const chEl = $("wChange");
+    chEl.textContent = (diff > 0 ? "+" : "") + fmtWn(diff) + " " + unit;
+    chEl.style.color = diff < 0 ? "var(--good)" : "var(--text)";
+    $("wGoal").textContent = state.goalWeight ? fmtWn(state.goalWeight) + " " + unit : "\u2014";
+    renderWeightChart(items);
+  }
+  const el = $("weighInList");
+  if(!items.length){ el.innerHTML = ""; return; }
+  el.innerHTML = "";
+  items.slice().reverse().slice(0,8).forEach(function(p){
+    const div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = '<div class="meta">' + esc(fmtDate(p.date)) + '</div><div style="font-weight:700;">' + fmtWn(p.w) + " " + esc(unit) + "</div>";
+    const acts = document.createElement("div");
+    acts.className = "actions";
+    const del = document.createElement("button");
+    del.className = "small ghost"; del.textContent = "Delete";
+    del.addEventListener("click", function(){
+      if(!confirm("Delete this weigh-in?")) return;
+      state.weighIns = state.weighIns.filter(function(q){ return q.id !== p.id; });
+      saveState(); renderWeight();
+    });
+    acts.appendChild(del); div.appendChild(acts); el.appendChild(div);
+  });
+}
+function renderWeightChart(items){
+  const box = $("weightChart");
+  if(items.length < 2){
+    box.innerHTML = '<p class="muted" style="margin:0;">Log at least two weigh-ins to see your trend line.</p>';
+    return;
+  }
+  const W = 600, H = 230, pl = 10, pr = 10, pt = 14, pb = 26;
+  const ws = items.map(function(p){ return p.w; });
+  let mn = Math.min.apply(null, ws), mx = Math.max.apply(null, ws);
+  if(state.goalWeight){ mn = Math.min(mn, state.goalWeight); mx = Math.max(mx, state.goalWeight); }
+  const padR = (mx - mn) || 1; mn -= padR*0.25; mx += padR*0.25;
+  const t0 = items[0].ts, t1 = items[items.length-1].ts, span = (t1 - t0) || 1;
+  function X(ts){ return pl + (ts - t0)/span*(W - pl - pr); }
+  function Y(w){ return pt + (1 - (w - mn)/(mx - mn))*(H - pt - pb); }
+  let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block;" role="img" aria-label="Weight trend chart">';
+  if(state.soberDate){
+    const sd0 = new Date(state.soberDate).getTime();
+    const pts = items.map(function(p){
+      const d = Math.max(0, (p.ts - sd0)/86400000);
+      return X(p.ts).toFixed(1) + "," + (pt + (1 - Math.min(1, d/365))*(H - pt - pb)).toFixed(1);
+    }).join(" ");
+    s += '<polyline points="' + pts + '" fill="none" stroke="var(--accent2)" stroke-width="2" stroke-dasharray="7 5" opacity="0.85"/>';
+  }
+  if(state.goalWeight){
+    const y = Y(state.goalWeight).toFixed(1);
+    s += '<line x1="' + pl + '" y1="' + y + '" x2="' + (W-pr) + '" y2="' + y + '" stroke="var(--good)" stroke-width="2" stroke-dasharray="8 5"/>';
+  }
+  const avgPts = items.map(function(p,i){ return X(p.ts).toFixed(1) + "," + Y(rollingAvg(items,i)).toFixed(1); }).join(" ");
+  s += '<polyline points="' + avgPts + '" fill="none" stroke="var(--warn)" stroke-width="2" stroke-dasharray="3 4"/>';
+  const pts = items.map(function(p){ return X(p.ts).toFixed(1) + "," + Y(p.w).toFixed(1); }).join(" ");
+  s += '<polyline points="' + pts + '" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>';
+  items.forEach(function(p){
+    s += '<circle cx="' + X(p.ts).toFixed(1) + '" cy="' + Y(p.w).toFixed(1) + '" r="4.5" fill="var(--accent)"/>';
+  });
+  s += '<text x="' + pl + '" y="' + (H-8) + '" fill="var(--muted)" font-size="12">' + esc(fmtDate(items[0].date)) + '</text>';
+  s += '<text x="' + (W-pr) + '" y="' + (H-8) + '" fill="var(--muted)" font-size="12" text-anchor="end">' + esc(fmtDate(items[items.length-1].date)) + '</text>';
+  s += '</svg>';
+  box.innerHTML = s;
+}
+$("wAdd").addEventListener("click", function(){
+  const v = parseFloat($("wVal").value);
+  if(!(v > 0)){ alert("Enter a weight first."); return; }
+  const k = $("wDate").value || todayKey();
+  const d = keyToDate(k);
+  state.weighIns.push({id:uid(), date:k, ts:d.getTime(), w:toLbs(v)});
+  $("wVal").value = "";
+  saveState(); renderWeight();
+});
+
+/* ============ SLEEP LOG ============ */
+let sleepQ = 3;
+function renderSleep(){
+  if(!$("sleepDate").value) $("sleepDate").value = todayKey();
+  buildDots("sleepQRow", sleepQ, function(v){ sleepQ = v; });
+  const box = $("sleepChart");
+  const days = [];
+  for(let i=13; i>=0; i--){ const d = new Date(); d.setDate(d.getDate()-i); days.push(d); }
+  const entries = days.map(function(d){ const k = localKey(d); return {d:d, e:state.sleepLog[k]}; });
+  if(!entries.some(function(x){ return x.e; })){
+    box.innerHTML = '<p class="muted" style="margin:0;">Log your sleep to see it here, next to your sober days.</p>';
+    return;
+  }
+  const W = 600, H = 200, pl = 8, pr = 8, pt = 14, pb = 40;
+  const bw = (W - pl - pr)/14, maxH = 12;
+  const soberStart = state.soberDate ? new Date(new Date(state.soberDate).setHours(0,0,0,0)).getTime() : null;
+  let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block;" role="img" aria-label="Sleep chart">';
+  entries.forEach(function(x, i){
+    const cx = pl + bw*i + bw/2;
+    if(x.e){
+      const bh = Math.min(1, (x.e.hours || 0)/maxH)*(H - pt - pb);
+      const op = (0.35 + ((x.e.quality || 3)/5)*0.65).toFixed(2);
+      s += '<rect x="' + (cx - bw*0.32).toFixed(1) + '" y="' + (H - pb - bh).toFixed(1) +
+        '" width="' + (bw*0.64).toFixed(1) + '" height="' + Math.max(2,bh).toFixed(1) +
+        '" rx="4" fill="var(--accent2)" opacity="' + op + '"/>';
+      s += '<text x="' + cx.toFixed(1) + '" y="' + (H - pb - bh - 5).toFixed(1) + '" text-anchor="middle" fill="var(--text)" font-size="11">' + x.e.hours + 'h</text>';
+    }
+    s += '<text x="' + cx.toFixed(1) + '" y="' + (H - 20) + '" text-anchor="middle" fill="var(--muted)" font-size="10">' + x.d.getDate() + '</text>';
+    if(soberStart != null && x.d.getTime() >= soberStart){
+      s += '<circle cx="' + cx.toFixed(1) + '" cy="' + (H - 8) + '" r="3.5" fill="var(--good)"/>';
+    }
+  });
+  s += '</svg>';
+  box.innerHTML = s;
+}
+$("sleepSave").addEventListener("click", function(){
+  const k = $("sleepDate").value || todayKey();
+  const h = parseFloat($("sleepHours").value);
+  if(!(h >= 0) || h > 24){ alert("Enter hours slept (0\u201324)."); return; }
+  state.sleepLog[k] = {hours: Math.round(h*2)/2, quality: sleepQ};
+  $("sleepHours").value = "";
+  saveState(); renderSleep();
+});
+
+/* ============ DAILY HABITS ============ */
+function habitStreak(h){
+  let s = 0;
+  const d = new Date();
+  if(!h.log[localKey(d)]) d.setDate(d.getDate()-1);
+  while(h.log[localKey(d)]){ s++; d.setDate(d.getDate()-1); }
+  return s;
+}
+function renderHabits(){
+  const el = $("habitList");
+  if(!state.habits.length){
+    el.innerHTML = '<p class="muted" style="margin:0;">No habits yet — add one below. Small daily wins add up.</p>';
+    return;
+  }
+  const k = todayKey();
+  el.innerHTML = "";
+  state.habits.forEach(function(h){
+    const row = document.createElement("div");
+    row.className = "habitrow";
+    const cb = document.createElement("div");
+    cb.className = "habitcheck" + (h.log[k] ? " on" : "");
+    cb.innerHTML = h.log[k] ? "&#x2713;" : "";
+    cb.setAttribute("role", "checkbox");
+    cb.setAttribute("aria-checked", h.log[k] ? "true" : "false");
+    cb.setAttribute("tabindex", "0");
+    cb.setAttribute("aria-label", h.name);
+    function toggle(){
+      if(h.log[k]) delete h.log[k]; else h.log[k] = true;
+      saveState(); renderHabits();
+    }
+    cb.addEventListener("click", toggle);
+    cb.addEventListener("keydown", function(e){
+      if(e.key === " " || e.key === "Enter"){ e.preventDefault(); toggle(); }
+    });
+    const nm = document.createElement("div");
+    nm.className = "habitname"; nm.textContent = h.name;
+    const st = document.createElement("div");
+    st.className = "habitstreak"; st.textContent = "\uD83D\uDD25 " + habitStreak(h) + "d";
+    const rn = document.createElement("button");
+    rn.className = "iconbtn"; rn.textContent = "\u270E"; rn.title = "Rename habit";
+    rn.setAttribute("aria-label", "Rename habit");
+    rn.addEventListener("click", function(){
+      const v = prompt("Rename habit:", h.name);
+      if(v && v.trim()){ h.name = v.trim().slice(0, 40); saveState(); renderHabits(); }
+    });
+    const del = document.createElement("button");
+    del.className = "iconbtn"; del.textContent = "\u00D7"; del.title = "Remove habit";
+    del.setAttribute("aria-label", "Remove habit");
+    del.addEventListener("click", function(){
+      if(!confirm("Remove this habit?")) return;
+      state.habits = state.habits.filter(function(q){ return q.id !== h.id; });
+      saveState(); renderHabits();
+    });
+    row.appendChild(cb); row.appendChild(nm); row.appendChild(st); row.appendChild(rn); row.appendChild(del);
+    el.appendChild(row);
+  });
+}
+$("habitAdd").addEventListener("click", function(){
+  const v = $("habitInput").value.trim();
+  if(!v) return;
+  state.habits.push({id:uid(), name:v.slice(0, 40), log:{}});
+  $("habitInput").value = "";
+  saveState(); renderHabits();
+});
+
+/* ============ GRATITUDE ============ */
+function renderGratitude(){
+  const el = $("gratitudeList");
+  if(!state.gratitude.length){
+    el.innerHTML = '<p class="muted" style="margin:0;">Nothing here yet — tonight, write one line before bed.</p>';
+    return;
+  }
+  el.innerHTML = "";
+  state.gratitude.slice().reverse().slice(0, 14).forEach(function(g){
+    const div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = '<div class="meta">' + esc(fmtDate(g.date)) + '</div><div>&#x1F64F; ' + esc(g.text) + "</div>";
+    const acts = document.createElement("div");
+    acts.className = "actions";
+    const del = document.createElement("button");
+    del.className = "small ghost"; del.textContent = "Delete";
+    del.addEventListener("click", function(){
+      state.gratitude = state.gratitude.filter(function(q){ return q.id !== g.id; });
+      saveState(); renderGratitude(); renderJournal();
+    });
+    acts.appendChild(del); div.appendChild(acts); el.appendChild(div);
+  });
+}
+$("gratAdd").addEventListener("click", function(){
+  const v = $("gratInput").value.trim();
+  if(!v) return;
+  state.gratitude.push({id:uid(), date:todayKey(), text:v.slice(0, 200)});
+  $("gratInput").value = "";
+  saveState(); renderGratitude(); renderJournal();
+});
+
+/* ============ SOS QUICK CONTACTS ============ */
+function renderSosContacts(){
+  const el = $("sosContactsList");
+  if(!state.sosContacts.length){
+    el.innerHTML = '<p class="muted" style="margin:0;">No contacts yet — add them in Settings. When a craving hits, one tap calls someone you trust.</p>';
+    return;
+  }
+  el.innerHTML = "";
+  state.sosContacts.forEach(function(c){
+    const row = document.createElement("div");
+    row.className = "contactrow";
+    const a = document.createElement("a");
+    a.className = "tel";
+    a.href = "tel:" + c.phone.replace(/[^+\d]/g, "");
+    const nm = document.createElement("span");
+    nm.textContent = c.name;
+    const ph = document.createElement("small");
+    ph.textContent = c.phone;
+    a.appendChild(nm); a.appendChild(ph);
+    row.appendChild(a);
+    el.appendChild(row);
+  });
+}
+function renderContactSettings(){
+  const el = $("contactSettingsList");
+  el.innerHTML = "";
+  state.sosContacts.forEach(function(c){
+    const row = document.createElement("div");
+    row.className = "contactrow";
+    const lab = document.createElement("div");
+    lab.style.flex = "1";
+    lab.innerHTML = '<div style="font-weight:700;">' + esc(c.name) + '</div><div class="muted">' + esc(c.phone) + "</div>";
+    const del = document.createElement("button");
+    del.className = "small ghost"; del.textContent = "Remove";
+    del.addEventListener("click", function(){
+      state.sosContacts = state.sosContacts.filter(function(q){ return q.id !== c.id; });
+      saveState(); renderContactSettings(); renderSosContacts();
+    });
+    row.appendChild(lab); row.appendChild(del);
+    el.appendChild(row);
+  });
+}
+$("contactAdd").addEventListener("click", function(){
+  const n = $("contactName").value.trim(), p = $("contactPhone").value.trim();
+  if(!n || !p){ alert("Add both a name and a phone number."); return; }
+  state.sosContacts.push({id:uid(), name:n.slice(0, 40), phone:p.slice(0, 30)});
+  $("contactName").value = ""; $("contactPhone").value = "";
+  saveState(); renderContactSettings(); renderSosContacts();
+});
+
+/* ============ WATER TRACKER ============ */
+function renderWater(){
+  const k = todayKey();
+  const n = state.water[k] || 0;
+  $("waterCount").textContent = n;
+  $("waterGlassWord").textContent = n === 1 ? "glass today" : "glasses today";
+  const days = ["S","M","T","W","T","F","S"];
+  let html = "";
+  for(let i=6; i>=0; i--){
+    const d = new Date(); d.setDate(d.getDate()-i);
+    const kk = localKey(d);
+    const v = state.water[kk] || 0;
+    const h = Math.min(34, 4 + v*4);
+    html += '<div class="wday' + (i === 0 ? " today" : "") + '"><div class="b"><div class="fill" style="height:' + h + 'px"></div></div>' +
+      "<div>" + days[d.getDay()] + '</div><div class="muted">' + v + "</div></div>";
+  }
+  $("waterStrip").innerHTML = html;
+}
+$("waterPlus").addEventListener("click", function(){
+  const k = todayKey();
+  state.water[k] = Math.min(30, (state.water[k] || 0) + 1);
+  saveState(); renderWater();
+});
+$("waterMinus").addEventListener("click", function(){
+  const k = todayKey();
+  state.water[k] = Math.max(0, (state.water[k] || 0) - 1);
+  saveState(); renderWater();
+});
+
 /* ============ RENDER ALL / INIT ============ */
 function renderAll(){
   applyTheme();
@@ -1173,7 +1701,15 @@ function renderAll(){
   renderReasons();
   renderWins();
   renderJournal();
+  renderGratitude();
   renderMeetings();
+  renderPatterns();
+  renderWeight();
+  renderSleep();
+  renderHabits();
+  renderWater();
+  renderSosContacts();
+  renderContactSettings();
   renderSettings();
   setMtgMode("zoom");
 }
