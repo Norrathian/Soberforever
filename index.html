@@ -193,6 +193,20 @@
   .contactrow:last-child{border-bottom:none;}
   .contactrow a.tel{flex:1; text-decoration:none; color:var(--text); font-weight:700; font-size:1.05rem; display:block; padding:10px 12px; background:var(--bg2); border:1px solid var(--line); border-radius:12px;}
   .contactrow a.tel small{display:block; font-weight:400; color:var(--muted); font-size:.8rem;}
+  /* new: affirmation, resources, letters, print, a11y */
+  .affirm{font-size:1.15rem; font-style:italic; line-height:1.6; margin:6px 0 0;}
+  .linkbtn{display:inline-block; padding:8px 14px; border-radius:10px; background:var(--bg2);
+    border:1px solid var(--line); color:var(--text); text-decoration:none; font-weight:600; font-size:.88rem; margin:2px 4px 2px 0;}
+  .rm *{transition:none !important; animation:none !important;}
+  .tlarge{font-size:18px;}
+  @media print{
+    body{padding-bottom:0;}
+    body > *:not(#reportOverlay){display:none !important;}
+    #reportOverlay{position:static; display:block !important; background:none; padding:0;}
+    #reportOverlay .sheet{box-shadow:none; border:none; max-width:none; max-height:none; background:#fff; color:#000; text-align:left;}
+    #reportOverlay .sheet .muted{color:#444;}
+    .noprint{display:none !important;}
+  }
 </style>
 </head>
 <body>
@@ -231,6 +245,11 @@
     </div>
 
     <div class="card center">
+      <h2>&#x2600;&#xFE0F; Today's thought</h2>
+      <p class="affirm" id="affirmText"></p>
+    </div>
+
+    <div class="card center">
       <h2>Today's pledge</h2>
       <p class="muted" id="pledgeMsg">Make today's promise to yourself.</p>
       <button id="pledgeBtn">I'm staying sober today</button>
@@ -262,6 +281,13 @@
       <label class="lbl" for="ciNote">Note (optional)</label>
       <textarea id="ciNote" placeholder="Anything worth remembering about today..."></textarea>
       <button id="ciSave" class="mt12" style="width:100%;">Save check-in</button>
+      <div id="recommitOffer" class="hidden mt12" style="background:var(--bg2); border:1px solid var(--line); border-radius:12px; padding:14px; text-align:center;">
+        <p style="margin:0 0 10px;">That took honesty to log. If it helps, you can walk through it — no judgment, just a little reflection.</p>
+        <div class="row" style="justify-content:center;">
+          <button id="recommitOpen" class="small">Reflect &amp; recommit</button>
+          <button id="recommitDismiss" class="small ghost">Not right now</button>
+        </div>
+      </div>
     </div>
 
     <div class="card">
@@ -308,6 +334,12 @@
       <h2>&#x1F4CA; 7-day rhythm</h2>
       <div class="rhythm" id="rhythmStrip"></div>
       <p class="muted mt8" style="margin-bottom:0;">A quiet look at your week — patterns, not judgments.</p>
+    </div>
+
+    <div class="card">
+      <h2>&#x1F49B; Tough days &amp; recommitments</h2>
+      <p class="muted" style="margin-top:0;">Logged with honesty. Every one of these is proof you came back.</p>
+      <div id="slipList"></div>
     </div>
 
     <div class="card">
@@ -398,13 +430,37 @@
     </div>
 
     <div class="card">
+      <h2>&#x1F48C; Letter to future self</h2>
+      <p class="muted" style="margin-top:0;">Write to the person you'll be at a future milestone. It stays sealed until you get there.</p>
+      <label class="lbl" for="letterBody">Your letter</label>
+      <textarea id="letterBody" placeholder="Dear future me..."></textarea>
+      <div class="row mt8">
+        <select id="letterMilestone" style="flex:1; min-width:140px;" aria-label="Unlock milestone">
+          <option value="30">Opens at 30 days</option>
+          <option value="90">Opens at 90 days</option>
+          <option value="180">Opens at 6 months</option>
+          <option value="365">Opens at 1 year</option>
+        </select>
+        <button id="letterSave" class="small">Seal the letter</button>
+      </div>
+      <div id="letterList" class="mt12"></div>
+    </div>
+
+    <div class="card">
       <h2>&#x1F4D3; Journal</h2>
       <label class="lbl" for="jTitle">Title</label>
       <input id="jTitle" placeholder="Entry title">
       <label class="lbl" for="jBody">Entry</label>
       <textarea id="jBody" placeholder="Write it out..."></textarea>
       <button id="jAdd" class="small mt8">Add entry</button>
+      <button id="jPrompt" class="small ghost mt8" style="margin-left:8px;">Give me a prompt</button>
       <div id="journalList" class="mt12"></div>
+    </div>
+
+    <div class="card center">
+      <h2>&#x1F4CA; Progress report</h2>
+      <p class="muted">A clean summary of your journey — print it or share it with a sponsor or counselor.</p>
+      <button id="reportBtn" class="small">View progress report</button>
     </div>
   </section>
 
@@ -500,6 +556,65 @@
     </div>
   </section>
 
+  <!-- RESOURCES -->
+  <section id="tab-resources" class="hidden">
+    <div class="card">
+      <h2>&#x1F6DF; Support resources</h2>
+      <p class="muted">If you're struggling right now, reach out — you don't have to go through it alone.</p>
+
+      <div class="item">
+        <div style="font-weight:700;">988 Suicide and Crisis Lifeline</div>
+        <div class="muted">24/7 crisis support by call, text, or chat.</div>
+        <div class="actions">
+          <a class="linkbtn" href="tel:988">Call or text 988</a>
+          <a class="linkbtn" href="https://988lifeline.org" target="_blank" rel="noopener">988lifeline.org &#x2197;</a>
+        </div>
+      </div>
+
+      <div class="item">
+        <div style="font-weight:700;">Crisis Text Line</div>
+        <div class="muted">Free 24/7 text support for anyone in crisis.</div>
+        <div class="actions">
+          <a class="linkbtn" href="tel:741741">Text HOME to 741741</a>
+          <a class="linkbtn" href="https://www.crisistextline.org" target="_blank" rel="noopener">crisistextline.org &#x2197;</a>
+        </div>
+      </div>
+
+      <div class="item">
+        <div style="font-weight:700;">SAMHSA National Helpline</div>
+        <div class="muted">Free referrals and information, 24/7, in English and Spanish.</div>
+        <div class="actions">
+          <a class="linkbtn" href="tel:+18006624357">1-800-662-4357</a>
+          <a class="linkbtn" href="https://www.samhsa.gov/find-help/national-helpline" target="_blank" rel="noopener">samhsa.gov &#x2197;</a>
+        </div>
+      </div>
+
+      <div class="item">
+        <div style="font-weight:700;">Alcoholics Anonymous</div>
+        <div class="muted">Find AA meetings near you or online.</div>
+        <div class="actions">
+          <a class="linkbtn" href="https://www.aa.org/find-aa" target="_blank" rel="noopener">Find a meeting &#x2197;</a>
+        </div>
+      </div>
+
+      <div class="item">
+        <div style="font-weight:700;">SMART Recovery</div>
+        <div class="muted">Science-based mutual support meetings, in person and online.</div>
+        <div class="actions">
+          <a class="linkbtn" href="https://www.smartrecovery.org/" target="_blank" rel="noopener">smartrecovery.org &#x2197;</a>
+        </div>
+      </div>
+
+      <div class="item">
+        <div style="font-weight:700;">Refuge Recovery</div>
+        <div class="muted">Mindfulness-based recovery meetings.</div>
+        <div class="actions">
+          <a class="linkbtn" href="https://refugerecoverymeetings.org/" target="_blank" rel="noopener">Find a meeting &#x2197;</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- SETTINGS -->
   <section id="tab-settings" class="hidden">
     <div class="card">
@@ -550,6 +665,28 @@
     </div>
 
     <div class="card">
+      <h2>&#x267F; Accessibility</h2>
+      <label class="row" style="gap:10px; cursor:pointer;">
+        <input type="checkbox" id="setReduceMotion" style="width:auto; margin:0;">
+        <span>Reduce motion <span class="muted">(calmer animations, no confetti)</span></span>
+      </label>
+      <label class="lbl" for="setTextSize">Text size</label>
+      <select id="setTextSize">
+        <option value="normal">Normal</option>
+        <option value="large">Large</option>
+      </select>
+    </div>
+
+    <div class="card">
+      <h2>&#x1F4C5; Reminders</h2>
+      <p class="muted">Download calendar reminders that repeat daily. They work with any calendar app.</p>
+      <div class="row">
+        <button id="icsCheckin" class="small ghost">Daily check-in reminder (.ics)</button>
+        <button id="icsMeeting" class="small ghost">Meeting reminder (.ics)</button>
+      </div>
+    </div>
+
+    <div class="card">
       <h2>&#x1F4BE; Your data</h2>
       <p class="muted">Everything lives in this browser only. Export a backup any time.</p>
       <div class="row">
@@ -572,6 +709,7 @@
   <button data-tab="journey"><span class="ico">&#x1F5FA;&#xFE0F;</span>Journey</button>
   <button data-tab="sos"><span class="ico">&#x1F6A8;</span>SOS</button>
   <button data-tab="meetings"><span class="ico">&#x1F91D;</span>Meetings</button>
+  <button data-tab="resources"><span class="ico">&#x1F6DF;</span>Help</button>
   <button data-tab="settings"><span class="ico">&#x2699;&#xFE0F;</span>Settings</button>
 </nav>
 
@@ -584,10 +722,52 @@
     <div id="shareCard"><div class="big" id="celebCardBig"></div><div id="celebCardSub"></div></div>
     <div class="row" style="justify-content:center;">
       <button id="celebCopy" class="small">Copy text</button>
+      <button id="celebDownload" class="small ghost">Download image</button>
       <button id="celebClose" class="small ghost">Keep going &#x1F49B;</button>
     </div>
   </div>
 </div>
+<!-- RECOMMIT OVERLAY -->
+<div id="recommitOverlay" class="overlay hidden">
+  <div class="sheet" style="text-align:left;">
+    <div id="slipForm">
+      <h2 class="center">A tough day &#x1F49B;</h2>
+      <p class="muted center">That took honesty to log. If it helps, walk through it — no judgment here, just reflection.</p>
+      <label class="lbl" for="slipWhat">What happened?</label>
+      <textarea id="slipWhat" placeholder="Just the honest version..."></textarea>
+      <label class="lbl">What sparked it? (optional)</label>
+      <div class="chips" id="slipTriggerTags"></div>
+      <label class="lbl" for="slipDiff">What would I do differently next time?</label>
+      <textarea id="slipDiff" placeholder="A plan for next time..."></textarea>
+      <label class="lbl" for="slipKind">One kind sentence to yourself</label>
+      <input id="slipKind" placeholder="e.g. I'm still in this.">
+      <div class="row mt12">
+        <button id="slipSave" style="flex:1;">Recommit</button>
+        <button id="slipCancel" class="ghost" style="flex:1;">Not right now</button>
+      </div>
+    </div>
+    <div id="slipDoneWrap" class="hidden center">
+      <div style="font-size:3rem;">&#x1F49B;</div>
+      <h2>Recommitted</h2>
+      <p class="muted">Thank you for being honest with yourself. A tough day doesn't erase your progress — what matters is what you do next, and you're doing it right now.</p>
+      <button id="slipDoneClose" class="mt8">Keep going</button>
+    </div>
+  </div>
+</div>
+
+<!-- PROGRESS REPORT OVERLAY -->
+<div id="reportOverlay" class="overlay hidden">
+  <div class="sheet" style="text-align:left;">
+    <h2 class="center">&#x1F4CA; Progress report</h2>
+    <p class="muted center">Generated <span id="reportDate"></span></p>
+    <div id="reportBody"></div>
+    <div class="row noprint mt12" style="justify-content:center;">
+      <button id="reportPrint" class="small">Print</button>
+      <button id="reportClose" class="small ghost">Close</button>
+    </div>
+  </div>
+</div>
+
 <canvas id="confettiCanvas"></canvas>
 
 <script>
@@ -605,7 +785,8 @@ function defaultState(){
     meetings:[], celebrated:[],
     weighIns:[], weightUnit:"lbs", goalWeight:null,
     sleepLog:{}, habits:[], gratitude:[],
-    sosContacts:[], water:{}
+    sosContacts:[], water:{},
+    slips:[], futureLetters:[], promptIdx:0, reduceMotion:null, textSize:"normal"
   };
 }
 function loadState(){
@@ -622,6 +803,10 @@ function saveState(){
   catch(e){ /* storage unavailable — app still runs */ }
 }
 let state = loadState();
+if(state.reduceMotion === null || state.reduceMotion === undefined){
+  try{ state.reduceMotion = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); }
+  catch(e){ state.reduceMotion = false; }
+}
 
 /* ============ HELPERS ============ */
 function $(id){ return document.getElementById(id); }
@@ -767,6 +952,7 @@ function checkMilestones(){
 
 /* ============ CONFETTI ============ */
 function launchConfetti(ms){
+  if(state.reduceMotion) return;
   ms = ms || 3500;
   const c = $("confettiCanvas");
   const ctx = c.getContext("2d");
@@ -799,6 +985,7 @@ function launchConfetti(ms){
   requestAnimationFrame(frame);
 }
 function showCelebration(title, sub, cardBig, cardSub){
+  lastCeleb = {title:title, sub:sub, cardBig:cardBig, cardSub:cardSub, days:daysElapsed(), date:new Date()};
   $("celebTitle").textContent = title;
   $("celebSub").textContent = sub;
   $("celebCardBig").textContent = cardBig;
@@ -889,6 +1076,7 @@ $("ciDrank").addEventListener("click", function(){ setCiStatus("drank"); });
 function renderCheckin(){
   const k = todayKey();
   const c = state.checkins[k];
+  $("recommitOffer").classList.add("hidden");
   $("checkinDate").value = k;
   if(c){
     setCiStatus(c.status); ciMood = c.mood||3; ciCraving = c.craving==null?1:c.craving;
@@ -916,6 +1104,7 @@ $("ciSave").addEventListener("click", function(){
   $("ciTodayStatus").textContent = ciStatus === "sober"
     ? "Logged as sober for " + fmtDate(k) + ". Nice."
     : "Logged for " + fmtDate(k) + ". No judgment here — every day is a new one.";
+  if(ciStatus === "drank") $("recommitOffer").classList.remove("hidden");
   renderRhythm();
 });
 
@@ -1262,6 +1451,8 @@ function renderSettings(){
   $("setTheme").value = state.theme || "dark";
   $("setWeightUnit").value = weightUnit();
   $("setGoalWeight").value = state.goalWeight != null ? fmtWn(state.goalWeight) : "";
+  $("setReduceMotion").checked = !!state.reduceMotion;
+  $("setTextSize").value = state.textSize === "large" ? "large" : "normal";
 }
 $("setSave").addEventListener("click", function(){
   const dv = $("setDate").value;
@@ -1271,6 +1462,8 @@ $("setSave").addEventListener("click", function(){
   state.meetingName = $("setMtgName").value.trim() || "Sundowners";
   state.meetingTime = $("setMtgTime").value || "17:30";
   state.theme = $("setTheme").value;
+  state.reduceMotion = $("setReduceMotion").checked;
+  state.textSize = $("setTextSize").value === "large" ? "large" : "normal";
   state.weightUnit = $("setWeightUnit").value === "kg" ? "kg" : "lbs";
   const gw = parseFloat($("setGoalWeight").value);
   state.goalWeight = gw > 0 ? toLbs(gw) : null;
@@ -1687,6 +1880,353 @@ $("waterMinus").addEventListener("click", function(){
   saveState(); renderWater();
 });
 
+/* ============ DAILY AFFIRMATION ============ */
+const AFFIRMATIONS = [
+  "You don't have to earn today. You just have to live it sober.",
+  "Every clear morning is proof you can do hard things.",
+  "Cravings are weather. You are the sky — they pass, you remain.",
+  "You already survived your hardest day. Today is just today.",
+  "Sobriety isn't about being perfect. It's about coming back.",
+  "One honest day beats a hundred numb ones.",
+  "You're not missing out. You're finally showing up.",
+  "The person you're becoming is worth protecting.",
+  "Small steps, every day, add up to a different life.",
+  "You handled yesterday. You'll handle today.",
+  "Being uncomfortable for a little while beats being stuck forever.",
+  "You are allowed to have a hard day and still stay sober.",
+  "Your future self is rooting for the choice you make today.",
+  "Rest is productive. Healing takes energy.",
+  "You don't need a drink to celebrate, grieve, relax, or belong.",
+  "Ask for help. Strong people do it all the time.",
+  "Today's discomfort is tomorrow's strength.",
+  "You're rebuilding trust with yourself, one kept promise at a time.",
+  "Boredom is not an emergency.",
+  "Feelings are visitors. Let them come, let them go.",
+  "You've already done the hardest part: you started.",
+  "Clarity is a gift you give yourself daily.",
+  "Nobody can take today's sobriety from you.",
+  "Progress isn't always visible, but it's always happening.",
+  "Choose the morning you want to wake up to.",
+  "You are more than your worst day.",
+  "Gratitude turns what you have into enough.",
+  "Keep it simple: don't drink today. That's the whole job.",
+  "Your story isn't over. This chapter is called beginning.",
+  "Be patient with yourself. You're learning a new way to live."
+];
+function renderAffirmation(){
+  const n = new Date();
+  const doy = Math.floor((n - new Date(n.getFullYear(),0,0))/86400000);
+  $("affirmText").textContent = "\u201C" + AFFIRMATIONS[doy % AFFIRMATIONS.length] + "\u201D";
+}
+
+/* ============ SLIP / RECOMMIT FLOW ============ */
+let slipTriggers = [];
+function renderSlipTriggerTags(){
+  const el = $("slipTriggerTags");
+  el.innerHTML = "";
+  TRIGGERS.forEach(function(t){
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = t;
+    if(slipTriggers.indexOf(t) !== -1) b.classList.add("on");
+    b.addEventListener("click", function(){
+      const i = slipTriggers.indexOf(t);
+      if(i === -1) slipTriggers.push(t); else slipTriggers.splice(i,1);
+      b.classList.toggle("on");
+    });
+    el.appendChild(b);
+  });
+}
+function renderSlips(){
+  const el = $("slipList");
+  if(!state.slips.length){
+    el.innerHTML = '<p class="muted" style="margin:0;">Nothing here. And if there ever is, it will be met with honesty — not judgment.</p>';
+    return;
+  }
+  el.innerHTML = "";
+  state.slips.slice().reverse().forEach(function(s){
+    const div = document.createElement("div");
+    div.className = "item";
+    let h = '<div class="meta">' + esc(fmtDate(s.date)) + ' \u2022 reflected &amp; recommitted</div>';
+    if(s.what) h += '<div><strong>What happened:</strong> ' + esc(s.what) + '</div>';
+    if(s.triggers && s.triggers.length) h += '<div class="muted">Sparks: ' + esc(s.triggers.join(", ")) + '</div>';
+    if(s.diff) h += '<div><strong>Next time:</strong> ' + esc(s.diff) + '</div>';
+    if(s.kind) h += '<div style="font-style:italic; margin-top:4px;">\u201C' + esc(s.kind) + '\u201D</div>';
+    div.innerHTML = h;
+    const acts = document.createElement("div");
+    acts.className = "actions";
+    const del = document.createElement("button");
+    del.className = "small ghost"; del.textContent = "Delete";
+    del.addEventListener("click", function(){
+      if(!confirm("Delete this reflection?")) return;
+      state.slips = state.slips.filter(function(q){ return q.id !== s.id; });
+      saveState(); renderSlips();
+    });
+    acts.appendChild(del); div.appendChild(acts); el.appendChild(div);
+  });
+}
+$("recommitOpen").addEventListener("click", function(){
+  slipTriggers = [];
+  renderSlipTriggerTags();
+  $("slipWhat").value = ""; $("slipDiff").value = ""; $("slipKind").value = "";
+  $("slipForm").classList.remove("hidden");
+  $("slipDoneWrap").classList.add("hidden");
+  $("recommitOverlay").classList.remove("hidden");
+});
+$("recommitDismiss").addEventListener("click", function(){ $("recommitOffer").classList.add("hidden"); });
+$("slipCancel").addEventListener("click", function(){ $("recommitOverlay").classList.add("hidden"); });
+$("slipSave").addEventListener("click", function(){
+  state.slips.push({
+    id:uid(), date:todayKey(),
+    what:$("slipWhat").value.trim(), triggers:slipTriggers.slice(),
+    diff:$("slipDiff").value.trim(), kind:$("slipKind").value.trim()
+  });
+  saveState(); renderSlips();
+  $("slipForm").classList.add("hidden");
+  $("slipDoneWrap").classList.remove("hidden");
+  $("recommitOffer").classList.add("hidden");
+});
+$("slipDoneClose").addEventListener("click", function(){ $("recommitOverlay").classList.add("hidden"); });
+
+/* ============ MILESTONE IMAGE DOWNLOAD ============ */
+let lastCeleb = null;
+function wrapCanvasText(x, text, maxW){
+  const words = String(text).split(/\s+/);
+  const lines = [];
+  let line = "";
+  words.forEach(function(w){
+    const t = line ? line + " " + w : w;
+    if(x.measureText(t).width > maxW && line){ lines.push(line); line = w; }
+    else line = t;
+  });
+  if(line) lines.push(line);
+  return lines;
+}
+$("celebDownload").addEventListener("click", function(){
+  if(!lastCeleb) return;
+  const THEMES = {
+    dark:    {bg1:"#0f172a", bg2:"#1c2942", a1:"#f59e0b", a2:"#38bdf8", text:"#f1f5f9", muted:"#94a3b8"},
+    sunrise: {bg1:"#fff7ed", bg2:"#ffedd5", a1:"#ea580c", a2:"#d97706", text:"#431407", muted:"#b45309"},
+    ocean:   {bg1:"#ecfeff", bg2:"#cffafe", a1:"#0891b2", a2:"#0284c7", text:"#083344", muted:"#0e7490"}
+  };
+  const th = THEMES[state.theme] || THEMES.dark;
+  const S = 1080;
+  const cv = document.createElement("canvas");
+  cv.width = S; cv.height = S;
+  const x = cv.getContext("2d");
+  const g = x.createLinearGradient(0, 0, S, S);
+  g.addColorStop(0, th.bg1); g.addColorStop(1, th.bg2);
+  x.fillStyle = g; x.fillRect(0, 0, S, S);
+  x.strokeStyle = th.a1; x.lineWidth = 8;
+  x.beginPath(); x.arc(S/2, S/2, 430, 0, Math.PI*2); x.stroke();
+  x.textAlign = "center";
+  x.font = "92px sans-serif";
+  x.fillText("\uD83C\uDF89", S/2, 215);
+  x.fillStyle = th.text;
+  x.font = "800 112px sans-serif";
+  const lines = wrapCanvasText(x, lastCeleb.cardBig, 860);
+  let y = 400;
+  lines.forEach(function(l){ x.fillText(l, S/2, y); y += 132; });
+  x.fillStyle = th.muted;
+  x.font = "46px sans-serif";
+  const dstr = new Date().toLocaleDateString(undefined, {month:"long", day:"numeric", year:"numeric"});
+  x.fillText(dstr + "  \u2022  " + lastCeleb.days + " days sober", S/2, y + 50);
+  x.strokeStyle = th.a1; x.lineWidth = 4;
+  x.beginPath(); x.moveTo(S/2 - 150, y + 110); x.lineTo(S/2 + 150, y + 110); x.stroke();
+  x.fillStyle = th.a1;
+  x.font = "700 58px sans-serif";
+  x.fillText("SOBERFOREVER", S/2, y + 195);
+  x.fillStyle = th.muted;
+  x.font = "italic 44px sans-serif";
+  x.fillText("one day at a time", S/2, y + 260);
+  function done(blob){
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "soberforever-milestone.png";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 2000);
+  }
+  if(cv.toBlob){ cv.toBlob(function(b){ if(b) done(b); }, "image/png"); }
+  else {
+    const raw = atob(cv.toDataURL("image/png").split(",")[1]);
+    const arr = new Uint8Array(raw.length);
+    for(let i=0;i<raw.length;i++) arr[i] = raw.charCodeAt(i);
+    done(new Blob([arr], {type:"image/png"}));
+  }
+});
+
+/* ============ LETTER TO FUTURE SELF ============ */
+function renderLetters(){
+  const el = $("letterList");
+  if(!state.futureLetters.length){
+    el.innerHTML = '<p class="muted" style="margin:0;">No letters yet — write one to the future you.</p>';
+    return;
+  }
+  const d = daysElapsed();
+  el.innerHTML = "";
+  state.futureLetters.slice().reverse().forEach(function(L){
+    const div = document.createElement("div");
+    div.className = "item";
+    const unlocked = d >= L.milestone;
+    let h = '<div class="meta">Written ' + esc(fmtDate(L.date)) + ' \u2022 opens at ' + L.milestone + ' days</div>';
+    if(unlocked){
+      h += '<div style="white-space:pre-wrap;">' + esc(L.body) + '</div>';
+    } else {
+      const left = L.milestone - d;
+      h += '<div class="muted">\uD83D\uDD12 Sealed — opens in ' + left + ' day' + (left === 1 ? "" : "s") + '.</div>';
+    }
+    div.innerHTML = h;
+    const acts = document.createElement("div");
+    acts.className = "actions";
+    const del = document.createElement("button");
+    del.className = "small ghost"; del.textContent = "Delete";
+    del.addEventListener("click", function(){
+      if(!confirm("Delete this letter?")) return;
+      state.futureLetters = state.futureLetters.filter(function(q){ return q.id !== L.id; });
+      saveState(); renderLetters();
+    });
+    acts.appendChild(del); div.appendChild(acts); el.appendChild(div);
+  });
+}
+function checkLetters(){
+  const d = daysElapsed();
+  for(const L of state.futureLetters){
+    const id = "letter" + L.id;
+    if(d >= L.milestone && state.celebrated.indexOf(id) === -1){
+      state.celebrated.push(id);
+      saveState(); renderLetters();
+      showCelebration(
+        "A letter from your past self \uD83D\uDC8C",
+        "You made it to " + L.milestone + " days. Here's what you wrote back then.",
+        "LETTER UNLOCKED",
+        "Soberforever \u2022 one day at a time"
+      );
+      break;
+    }
+  }
+}
+$("letterSave").addEventListener("click", function(){
+  const b = $("letterBody").value.trim();
+  if(!b){ alert("Write your letter first."); return; }
+  if(!state.soberDate){ alert("Set your sobriety start date first."); return; }
+  const ms = parseInt($("letterMilestone").value, 10) || 30;
+  state.futureLetters.push({id:uid(), date:todayKey(), milestone:ms, body:b.slice(0, 2000)});
+  $("letterBody").value = "";
+  saveState(); renderLetters(); checkLetters();
+});
+
+/* ============ JOURNAL PROMPTS ============ */
+const PROMPTS = [
+  "What's one thing today that felt easier because you were sober?",
+  "Describe a moment this week you're proud of — big or small.",
+  "What used to trigger you that doesn't have the same pull anymore?",
+  "Write about a hard hour you got through without drinking. How did you do it?",
+  "What are three things your sobriety has given back to you?",
+  "If you could talk to yourself on day one, what would you say?",
+  "What's something you're looking forward to experiencing fully present?",
+  "Describe your ideal sober Saturday, from morning to night.",
+  "Who has supported you on this journey — and have you told them what it meant?",
+  "What emotion have you been avoiding? What happens if you just sit with it for a while?",
+  "Write about a place, song, or smell that used to mean drinking — and what it means now.",
+  "What's one boundary that's protecting your sobriety right now?",
+  "How have your sleep, energy, or mood changed since you started?",
+  "What would you do with the money you've saved so far?",
+  "Finish this sentence ten times: \u201CToday I choose sobriety because...\u201D"
+];
+$("jPrompt").addEventListener("click", function(){
+  const p = PROMPTS[(state.promptIdx || 0) % PROMPTS.length];
+  state.promptIdx = (state.promptIdx || 0) + 1;
+  saveState();
+  const cur = $("jBody").value;
+  $("jBody").value = cur ? (p + "\n\n" + cur) : (p + "\n\n");
+  $("jBody").focus();
+});
+
+/* ============ PROGRESS REPORT ============ */
+function openReport(){
+  const d = daysElapsed();
+  const keys = Object.keys(state.checkins).filter(function(k){
+    return !state.soberDate || k >= localKey(new Date(state.soberDate));
+  });
+  const rate = d > 0 ? Math.min(100, Math.round(keys.length/(d+1)*100)) : (keys.length ? 100 : 0);
+  let moodSum = 0, moodN = 0, cravSum = 0, cravN = 0;
+  keys.forEach(function(k){
+    const c = state.checkins[k];
+    if(c.mood){ moodSum += c.mood; moodN++; }
+    if(c.craving != null){ cravSum += c.craving; cravN++; }
+  });
+  const spend = +state.dailySpend || 0;
+  let wHtml = "Not logged";
+  if(state.weighIns.length >= 2){
+    const items = state.weighIns.slice().sort(function(a,b){ return a.ts - b.ts; });
+    const diff = items[items.length-1].w - items[0].w;
+    wHtml = (diff > 0 ? "+" : "") + fmtWn(diff) + " " + weightUnit() + " since first weigh-in";
+  }
+  function rrow(k, v){
+    return '<div class="pbar"><div class="pl" style="width:150px;">' + k + '</div><div style="font-weight:700;">' + v + '</div></div>';
+  }
+  $("reportDate").textContent = new Date().toLocaleDateString(undefined, {month:"long", day:"numeric", year:"numeric"});
+  $("reportBody").innerHTML =
+    rrow("Sober days", d.toLocaleString()) +
+    rrow("Check-in rate", rate + "% of days logged") +
+    rrow("Average mood", moodN ? (Math.round(moodSum/moodN*10)/10) + " / 5" : "\u2014") +
+    rrow("Average craving", cravN ? (Math.round(cravSum/cravN*10)/10) + " / 5" : "\u2014") +
+    rrow("Meetings attended", state.meetings.length) +
+    rrow("Money saved", money(d * spend)) +
+    rrow("Weight change", wHtml) +
+    (state.reason ? '<p style="font-style:italic;">\u201C' + esc(state.reason) + '\u201D</p>' : "");
+  $("reportOverlay").classList.remove("hidden");
+}
+$("reportBtn").addEventListener("click", openReport);
+$("reportClose").addEventListener("click", function(){ $("reportOverlay").classList.add("hidden"); });
+$("reportPrint").addEventListener("click", function(){ window.print(); });
+
+/* ============ CALENDAR REMINDERS (.ics) ============ */
+function downloadICS(summary, description, hour, minute, filename){
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()+1, hour, minute, 0);
+  function f(d){ return d.getFullYear()+pad(d.getMonth()+1)+pad(d.getDate())+"T"+pad(d.getHours())+pad(d.getMinutes())+"00"; }
+  function u(d){ return d.getUTCFullYear()+pad(d.getUTCMonth()+1)+pad(d.getUTCDate())+"T"+pad(d.getUTCHours())+pad(d.getUTCMinutes())+pad(d.getUTCSeconds())+"Z"; }
+  function e(s){ return String(s).replace(/\\/g,"\\\\").replace(/\n/g,"\\n").replace(/,/g,"\\,").replace(/;/g,"\\;"); }
+  const ics = [
+    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Soberforever//Recovery Reminders//EN",
+    "BEGIN:VEVENT",
+    "UID:" + uid() + "@soberforever",
+    "DTSTAMP:" + u(now),
+    "DTSTART:" + f(start),
+    "RRULE:FREQ=DAILY",
+    "SUMMARY:" + e(summary),
+    "DESCRIPTION:" + e(description),
+    "END:VEVENT", "END:VCALENDAR"
+  ].join("\r\n");
+  const blob = new Blob([ics], {type:"text/calendar"});
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){ URL.revokeObjectURL(a.href); }, 2000);
+}
+$("icsCheckin").addEventListener("click", function(){
+  downloadICS("Daily check-in \u2014 Soberforever",
+    "Take a minute to log your day in Soberforever: sober or drank, mood, craving. No judgment — just honesty.",
+    20, 0, "soberforever-checkin-reminder.ics");
+});
+$("icsMeeting").addEventListener("click", function(){
+  const name = state.meetingName || "Sundowners";
+  const tm = state.meetingTime || "17:30";
+  const tp = tm.split(":");
+  let mins = (+tp[0])*60 + (+tp[1] || 0) - 15;
+  if(mins < 0) mins = 0;
+  downloadICS(name + " meeting reminder",
+    "Your daily meeting (" + name + ") starts at " + tm + ".",
+    Math.floor(mins/60), mins % 60, "soberforever-meeting-reminder.ics");
+});
+
+/* ============ ACCESSIBILITY ============ */
+function applyA11y(){
+  document.documentElement.classList.toggle("rm", !!state.reduceMotion);
+  document.documentElement.classList.toggle("tlarge", state.textSize === "large");
+}
+
 /* ============ RENDER ALL / INIT ============ */
 function renderAll(){
   applyTheme();
@@ -1711,16 +2251,21 @@ function renderAll(){
   renderSosContacts();
   renderContactSettings();
   renderSettings();
+  renderAffirmation();
+  renderSlips();
+  renderLetters();
+  applyA11y();
   setMtgMode("zoom");
 }
 maybeOnboard();
 renderAll();
 checkMilestones();
+checkLetters();
 setInterval(function(){
   renderHero();
   renderCountdown();
 }, 1000);
-setInterval(function(){ checkMilestones(); }, 60000);
+setInterval(function(){ checkMilestones(); checkLetters(); }, 60000);
 </script>
 </body>
 </html>
