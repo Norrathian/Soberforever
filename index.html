@@ -166,6 +166,9 @@
   .chips{display:flex; gap:8px; flex-wrap:wrap;}
   .chips button{padding:8px 14px; font-size:.85rem; background:var(--bg2); color:var(--text); border:1px solid var(--line); box-shadow:none; border-radius:999px;}
   .chips button.on{background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#fff; border-color:transparent;}
+  .smkdot{display:inline-block; width:22px; height:22px; border-radius:50%; background:var(--bg2); border:1px solid var(--line); margin:0 6px 6px 0; vertical-align:middle;}
+  .smkdot.free{background:var(--good); border-color:transparent;}
+  .smkdot.smoked{background:var(--warn); border-color:transparent;}
   .habitrow{display:flex; align-items:center; gap:10px; padding:9px 4px; border-bottom:1px solid var(--line);}
   .habitrow:last-child{border-bottom:none;}
   .habitcheck{width:30px; height:30px; border-radius:9px; border:2px solid var(--line); background:var(--bg2); flex:0 0 auto; display:flex; align-items:center; justify-content:center; font-size:1rem; color:#fff; cursor:pointer;}
@@ -579,6 +582,150 @@
     </div>
   </section>
 
+  <!-- SMOKE-FREE -->
+  <section id="tab-smoke" class="hidden">
+    <div class="card center" id="smokeSetup">
+      <h2>&#x1F6AD; Smoke-free</h2>
+      <p class="muted">A parallel track for kicking cigarettes — same deal as the rest of this app: every craving resisted counts, no shame, ever.</p>
+      <p><b>Where are you right now?</b></p>
+      <div class="row" style="justify-content:center;">
+        <button id="smokeModePlan" class="ghost">Planning to quit</button>
+        <button id="smokeModeQuit" class="ghost">I've quit</button>
+        <button id="smokeModeCut" class="ghost">Cutting down</button>
+      </div>
+    </div>
+
+    <div id="smokeMain" class="hidden">
+      <div class="card center">
+        <h2>&#x1F6AD; Smoke-free</h2>
+        <p class="muted" id="smokeHeroSub" style="margin:0 0 10px;"></p>
+        <div id="smokeHeroBig" style="font-size:2.4rem; font-weight:800;">&mdash;</div>
+        <div class="muted" id="smokeHeroDetail"></div>
+        <div class="stat3 mt12">
+          <div class="s"><div class="v" id="smokeS1">0</div><div class="k" id="smokeK1">&mdash;</div></div>
+          <div class="s"><div class="v" id="smokeS2">0</div><div class="k" id="smokeK2">&mdash;</div></div>
+          <div class="s"><div class="v" id="smokeS3">0</div><div class="k" id="smokeK3">&mdash;</div></div>
+        </div>
+        <p class="muted hidden" id="smokeLifeNote" style="font-size:.75rem; margin:8px 0 0;">*Rough estimate: about 11 minutes per cigarette not smoked.</p>
+        <button id="smokeChangeMode" class="small ghost mt8">Change my plan</button>
+      </div>
+
+      <div class="card hidden" id="smokePlanCard">
+        <h2>&#x1F4CB; Quit-day prep</h2>
+        <label class="lbl" for="smokeQuitDate">My quit date &amp; time</label>
+        <input type="datetime-local" id="smokeQuitDate">
+        <button id="smokeQuitDateSave" class="small mt8">Set quit date</button>
+        <h3>Pre-quit checklist</h3>
+        <div id="smokeChecklist"></div>
+      </div>
+
+      <div class="card hidden" id="smokeCutCard">
+        <h2>&#x1F4C9; Cutting down</h2>
+        <div class="grid2">
+          <div>
+            <label class="lbl" for="smokeLimit">Daily limit</label>
+            <input type="number" id="smokeLimit" min="1" inputmode="numeric" placeholder="e.g. 10">
+          </div>
+          <div>
+            <div class="lbl">Today</div>
+            <div style="font-size:2rem; font-weight:800;"><span id="smokeTodayCount">0</span><span class="muted" style="font-size:1rem;"> / <span id="smokeTodayLimit">&ndash;</span></span></div>
+          </div>
+        </div>
+        <button id="smokeLogCig" class="mt8" style="width:100%; font-size:1.1rem;">&#x1F6AC; Log a cigarette</button>
+        <p class="muted mt8" id="smokeCutMsg" style="margin-bottom:0;"></p>
+        <h3>Last 14 days</h3>
+        <div class="chartbox" id="smokeCutChart"></div>
+        <button id="smokeReadyQuit" class="ghost mt12" style="width:100%;">I'm ready &mdash; set my quit date</button>
+      </div>
+
+      <div class="card">
+        <h2>&#x1F30A; Craving hitting?</h2>
+        <p class="muted">Most cravings peak and pass in a few minutes. Ride this one out.</p>
+        <div class="center">
+          <div id="smokeUrgeTime" style="font-size:2.4rem; font-weight:800;">5:00</div>
+          <p class="muted" id="smokeUrgeMsg" style="min-height:2.4em;"></p>
+          <div class="row" style="justify-content:center;">
+            <button id="smokeUrgeStart" class="small">Start 5-minute timer</button>
+            <button id="smokeUrgeCancel" class="small ghost">Cancel</button>
+          </div>
+        </div>
+        <div class="row mt12" style="justify-content:center;">
+          <button id="smokeBreath" class="small ghost">Open breathing exercise</button>
+        </div>
+        <h3>Quick distractions</h3>
+        <p class="muted" style="margin:0;">Take a walk &bull; drink a big glass of water &bull; chew gum or a mint &bull; slow deep breaths &bull; text someone &bull; brush your teeth &bull; stretch for a minute</p>
+      </div>
+
+      <div class="card hidden" id="smokeMsCard">
+        <h2>&#x1F3C6; Smoke-free milestones</h2>
+        <div id="smokeMsList"></div>
+      </div>
+      <div class="card hidden" id="smokeBadgeCard">
+        <h2>&#x1F3C5; Smoke-free badges</h2>
+        <div class="shelf" id="smokeBadgeShelf"></div>
+      </div>
+
+      <div class="card">
+        <h2>&#x2705; Today's smoke check-in</h2>
+        <div class="seg">
+          <button id="smokeFree" type="button">Smoke-free</button>
+          <button id="smokeSmoked" type="button">I smoked</button>
+        </div>
+        <label class="lbl">Craving intensity (1&ndash;5)</label>
+        <div class="dots" id="smokeCravingDots"></div>
+        <label class="lbl">What sparked it? (optional)</label>
+        <div class="chips" id="smokeTriggerTags"></div>
+        <div id="smokeStrip" class="mt12"></div>
+      </div>
+
+      <div class="card hidden" id="smokeSlipCard">
+        <h2>&#x1F49B; Tough days &amp; recommitments</h2>
+        <div id="smokeSlipOffer" class="hidden mt12" style="background:var(--bg2); border:1px solid var(--line); border-radius:12px; padding:14px; text-align:center;">
+          <p style="margin:0 0 10px;"><b>That took honesty to log.</b><br><span class="muted">Want to walk through it? No judgment &mdash; just reflection.</span></p>
+          <div class="row" style="justify-content:center;">
+            <button id="smokeReflectOpen" class="small">Reflect &amp; recommit</button>
+            <button id="smokeReflectDismiss" class="small ghost">Not right now</button>
+          </div>
+        </div>
+        <div id="smokeReflectForm" class="hidden mt12">
+          <label class="lbl" for="smokeSlipWhat">What happened?</label>
+          <textarea id="smokeSlipWhat" placeholder="Just the honest version..."></textarea>
+          <label class="lbl">What sparked it? (optional)</label>
+          <div class="chips" id="smokeSlipTriggerTags"></div>
+          <label class="lbl" for="smokeSlipDiff">What would I do differently next time?</label>
+          <textarea id="smokeSlipDiff" placeholder="A plan for next time..."></textarea>
+          <label class="lbl" for="smokeSlipKind">One kind sentence to yourself</label>
+          <input id="smokeSlipKind" placeholder="e.g. I'm still in this.">
+          <div class="row mt12">
+            <button id="smokeSlipSave" style="flex:1;">Recommit</button>
+            <button id="smokeSlipCancel" class="ghost" style="flex:1;">Cancel</button>
+          </div>
+        </div>
+        <div id="smokeSlipList" class="mt12"></div>
+      </div>
+
+      <div class="card">
+        <h2>&#x1FAC1; What gets better</h2>
+        <p class="muted">Typical things people notice after quitting &mdash; everyone's timeline is their own.</p>
+        <div id="smokeHealthList" style="padding-left:20px;"></div>
+      </div>
+
+      <div class="card">
+        <h2>&#x1F50D; My smoking triggers</h2>
+        <div id="smokePatternBars"></div>
+      </div>
+
+      <div class="card">
+        <h2>&#x1F9E1; Why I'm quitting smoking</h2>
+        <div id="smokeReasonWall"></div>
+        <div class="row mt8">
+          <input id="smokeReasonInput" placeholder="Add a reason..." style="flex:1;">
+          <button id="smokeReasonAdd" class="small">Add</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <!-- SOS -->
   <section id="tab-sos" class="hidden">
     <div class="card center">
@@ -807,6 +954,31 @@
     </div>
 
     <div class="card">
+      <h2>&#x1F6AD; Smoke-free settings</h2>
+      <label class="lbl" for="setSmokeMode">My smoking plan</label>
+      <select id="setSmokeMode">
+        <option value="">Not set</option>
+        <option value="planning">Planning to quit</option>
+        <option value="quit">I've quit</option>
+        <option value="cutting">Cutting down</option>
+      </select>
+      <label class="lbl" for="setSmokeQuitDate">Quit date &amp; time</label>
+      <input type="datetime-local" id="setSmokeQuitDate">
+      <div class="grid2">
+        <div>
+          <label class="lbl" for="setCigsPerDay">Cigarettes per day (avg)</label>
+          <input type="number" id="setCigsPerDay" min="0" inputmode="numeric">
+        </div>
+        <div>
+          <label class="lbl" for="setPackPrice">Pack price ($)</label>
+          <input type="number" id="setPackPrice" min="0" step="0.5" inputmode="decimal">
+        </div>
+      </div>
+      <label class="lbl" for="setSmokeLimit">Daily limit (cutting down)</label>
+      <input type="number" id="setSmokeLimit" min="1" inputmode="numeric" placeholder="e.g. 10">
+    </div>
+
+    <div class="card">
       <h2>&#x1F4BE; Your data</h2>
       <p class="muted">Everything lives in this browser only. Export a backup any time.</p>
       <div class="row">
@@ -828,6 +1000,7 @@
   <button data-tab="home" class="on"><span class="ico">&#x1F3E0;</span>Today</button>
   <button data-tab="journey"><span class="ico">&#x1F5FA;&#xFE0F;</span>Journey</button>
   <button data-tab="fitness"><span class="ico">&#x1F3C3;</span>Fitness</button>
+  <button data-tab="smoke"><span class="ico">&#x1F6AD;</span>Smoke-free</button>
   <button data-tab="sos"><span class="ico">&#x1F6A8;</span>SOS</button>
   <button data-tab="meetings"><span class="ico">&#x1F91D;</span>Meetings</button>
   <button data-tab="resources"><span class="ico">&#x1F6DF;</span>Help</button>
@@ -894,6 +1067,12 @@
 <script>
 "use strict";
 
+function defaultSmoke(){
+  return {
+    mode:null, quitDate:null, cigsPerDay:20, packPrice:8, dailyLimit:10,
+    preQuit:{}, cigLogs:{}, smokeCheckins:{}, smokeReasons:[], smokeSlips:[]
+  };
+}
 /* ============ STORAGE ============ */
 const LS_KEY = "soberforever.v1";
 function defaultState(){
@@ -908,7 +1087,8 @@ function defaultState(){
     sleepLog:{}, habits:[], gratitude:[],
     sosContacts:[], water:{},
     slips:[], futureLetters:[], promptIdx:0, reduceMotion:null, textSize:"normal",
-    activities:[], fitnessGoals:{daysPerWeek:0,distPerWeek:0}, distUnit:"mi"
+    activities:[], fitnessGoals:{daysPerWeek:0,distPerWeek:0}, distUnit:"mi",
+    smoke:defaultSmoke()
   };
 }
 function loadState(){
@@ -1573,6 +1753,15 @@ function renderSettings(){
   $("setTheme").value = state.theme || "dark";
   $("setWeightUnit").value = weightUnit();
   $("setDistUnit").value = distUnit();
+  const ssm0 = smk();
+  $("setSmokeMode").value = ssm0.mode || "";
+  if(ssm0.quitDate){
+    const sqd = new Date(ssm0.quitDate);
+    $("setSmokeQuitDate").value = sqd.getFullYear()+"-"+pad(sqd.getMonth()+1)+"-"+pad(sqd.getDate())+"T"+pad(sqd.getHours())+":"+pad(sqd.getMinutes());
+  } else { $("setSmokeQuitDate").value = ""; }
+  $("setCigsPerDay").value = ssm0.cigsPerDay || 0;
+  $("setPackPrice").value = ssm0.packPrice || 0;
+  $("setSmokeLimit").value = ssm0.dailyLimit || "";
   $("setGoalWeight").value = state.goalWeight != null ? fmtWn(state.goalWeight) : "";
   $("setReduceMotion").checked = !!state.reduceMotion;
   $("setTextSize").value = state.textSize === "large" ? "large" : "normal";
@@ -1589,6 +1778,14 @@ $("setSave").addEventListener("click", function(){
   state.textSize = $("setTextSize").value === "large" ? "large" : "normal";
   state.weightUnit = $("setWeightUnit").value === "kg" ? "kg" : "lbs";
   state.distUnit = $("setDistUnit").value === "km" ? "km" : "mi";
+  const ssm = smk();
+  ssm.mode = $("setSmokeMode").value || null;
+  const sqdv = $("setSmokeQuitDate").value;
+  ssm.quitDate = sqdv ? new Date(sqdv).toISOString() : null;
+  ssm.cigsPerDay = Math.max(0, parseInt($("setCigsPerDay").value, 10) || 0);
+  ssm.packPrice = Math.max(0, parseFloat($("setPackPrice").value) || 0);
+  const slim = parseInt($("setSmokeLimit").value, 10);
+  ssm.dailyLimit = slim > 0 ? slim : 0;
   const gw = parseFloat($("setGoalWeight").value);
   state.goalWeight = gw > 0 ? toLbs(gw) : null;
   applyTheme(); saveState(); renderAll();
@@ -2351,6 +2548,532 @@ function applyA11y(){
   document.documentElement.classList.toggle("tlarge", state.textSize === "large");
 }
 
+/* ============ SMOKE-FREE ============ */
+const SMOKE_TRIGGERS = ["Coffee","After meals","Stress","Driving","Work break","Social","Alcohol","Boredom","Other"];
+const SMOKE_MS = [
+  {d:1,label:"24 hours",sub:"One full day smoke-free. The hardest day is behind you."},
+  {d:3,label:"3 days",sub:"Nicotine is leaving your body."},
+  {d:7,label:"1 week",sub:"A whole week. Your lungs are noticing."},
+  {d:14,label:"2 weeks"},
+  {d:30,label:"1 month"},
+  {d:90,label:"3 months"},
+  {d:180,label:"6 months"},
+  {d:365,label:"1 year"}
+];
+const SMOKE_CIG_BADGES = [
+  {id:"smkC100", n:100, label:"100 cigs not smoked", ico:"\uD83C\uDF31"},
+  {id:"smkC500", n:500, label:"500 cigs not smoked", ico:"\uD83D\uDCAA"},
+  {id:"smkC1000", n:1000, label:"1,000 cigs not smoked", ico:"\uD83C\uDFC6"},
+  {id:"smkC5000", n:5000, label:"5,000 cigs not smoked", ico:"\uD83D\uDC51"}
+];
+const SMOKE_HEALTH = [
+  {t:"20 minutes", h:1/3, x:"Heart rate and blood pressure often start settling back toward normal."},
+  {t:"12 hours", h:12, x:"Carbon monoxide in the blood typically drops back toward normal levels."},
+  {t:"2 weeks", h:336, x:"Circulation often starts improving \u2014 moving around may start feeling easier."},
+  {t:"1\u20133 months", h:2160, x:"Many people notice less coughing and easier breathing."},
+  {t:"1\u20139 months", h:6480, x:"Lung function often keeps improving; energy keeps building."},
+  {t:"1 year", h:8760, x:"Heart disease risk is often said to drop to about half that of someone who still smokes."},
+  {t:"5 years", h:43800, x:"Stroke risk often falls to about the level of someone who never smoked."},
+  {t:"10 years", h:87600, x:"Lung cancer risk is often roughly half that of someone who still smokes."}
+];
+const SMOKE_PREQUIT = [
+  "Pick my quit date",
+  "Tell someone my plan",
+  "Remove ashtrays and lighters",
+  "Stock gum, mints, or toothpicks",
+  "Make a plan for my top triggers"
+];
+function smk(){
+  if(!state.smoke || typeof state.smoke !== "object") state.smoke = defaultSmoke();
+  else state.smoke = Object.assign(defaultSmoke(), state.smoke);
+  return state.smoke;
+}
+function smokeQuitTime(){ const s = smk(); return s.quitDate ? new Date(s.quitDate).getTime() : null; }
+function smokeDays(){
+  const q = smokeQuitTime(); if(q == null) return 0;
+  return Math.max(0, Math.floor((Date.now()-q)/86400000));
+}
+function smokeHours(){
+  const q = smokeQuitTime(); if(q == null) return 0;
+  return Math.max(0, (Date.now()-q)/3600000);
+}
+function smokeCigsAvoided(){
+  const s = smk();
+  if(s.mode !== "quit") return 0;
+  return Math.round((s.cigsPerDay||0) * smokeDays());
+}
+function smokeMoneySaved(){
+  const s = smk();
+  return smokeCigsAvoided() * ((s.packPrice||0)/20);
+}
+function fmtLife(mins){
+  if(mins < 60) return Math.round(mins) + " min";
+  const h = mins/60;
+  if(h < 48) return Math.round(h) + " hrs";
+  return (Math.round(h/24*10)/10) + " days";
+}
+function smokeCountdown(){
+  const q = smokeQuitTime(); if(q == null) return null;
+  const ms = q - Date.now();
+  if(ms <= 0) return null;
+  return {d:Math.floor(ms/86400000), h:Math.floor(ms%86400000/3600000)};
+}
+function smokeTodayCount(){ return smk().cigLogs[todayKey()] || 0; }
+function smokeWeekTotal(){
+  const s = smk(), wk = weekKey(new Date());
+  let t = 0;
+  Object.keys(s.cigLogs).forEach(function(k){
+    if(weekKey(keyToDate(k)) === wk) t += s.cigLogs[k];
+  });
+  return t;
+}
+function smokeWeekAvg(){
+  const s = smk();
+  let t = 0, n = 0;
+  for(let i=6;i>=0;i--){
+    const d = new Date(); d.setDate(d.getDate()-i);
+    t += s.cigLogs[localKey(d)] || 0; n++;
+  }
+  return (Math.round(t/n*10)/10);
+}
+function setSmokeMode(m){
+  smk().mode = m;
+  saveState(); renderSmoke();
+}
+function renderSmoke(){
+  const s = smk();
+  const hasMode = !!s.mode;
+  $("smokeSetup").classList.toggle("hidden", hasMode);
+  $("smokeMain").classList.toggle("hidden", !hasMode);
+  if(!hasMode) return;
+  const mode = s.mode;
+  let sub = "", big = "\u2014", detail = "";
+  if(mode === "planning"){
+    sub = "Getting ready is half the battle. Your quit day is coming.";
+    const cd = smokeCountdown();
+    if(cd){ big = cd.d + (cd.d === 1 ? " day" : " days"); detail = "until your quit date \u2014 " + fmtDateTime(s.quitDate); }
+    else if(s.quitDate){ big = "\u2014"; detail = "Your quit date has arrived \u2014 ready when you are."; }
+    else { big = "\u2014"; detail = "Set your quit date below to start the countdown."; }
+    $("smokeK1").textContent = "days to prepare";
+    $("smokeS1").textContent = cd ? cd.d : "\u2014";
+    $("smokeK2").textContent = "cigs / day now";
+    $("smokeS2").textContent = s.cigsPerDay || 0;
+    $("smokeK3").textContent = "pack price";
+    $("smokeS3").textContent = money(s.packPrice || 0);
+    $("smokeLifeNote").classList.add("hidden");
+  } else if(mode === "quit"){
+    sub = "Every craving resisted counts. You're doing this.";
+    detail = s.quitDate ? "smoke-free since " + fmtDateTime(s.quitDate) : "Set your quit date below to start the counter.";
+    $("smokeK1").textContent = "cigs not smoked";
+    $("smokeS1").textContent = smokeCigsAvoided().toLocaleString();
+    $("smokeK2").textContent = "money saved";
+    $("smokeS2").textContent = money(smokeMoneySaved());
+    $("smokeK3").textContent = "life regained*";
+    $("smokeS3").textContent = fmtLife(smokeCigsAvoided()*11);
+    $("smokeLifeNote").classList.remove("hidden");
+  } else {
+    sub = "Trending down is winning. Small steps, steady progress.";
+    const tc = smokeTodayCount(), lim = s.dailyLimit || 0;
+    big = tc + " / " + (lim || "\u2013");
+    detail = smokeWeekTotal() + " this week" + (lim ? " \u2022 limit " + lim + "/day" : "");
+    $("smokeK1").textContent = "today";
+    $("smokeS1").textContent = tc;
+    $("smokeK2").textContent = "this week";
+    $("smokeS2").textContent = smokeWeekTotal();
+    $("smokeK3").textContent = "avg / day";
+    $("smokeS3").textContent = smokeWeekAvg();
+    $("smokeLifeNote").classList.add("hidden");
+  }
+  $("smokeHeroSub").textContent = sub;
+  if(!(mode === "quit" && s.quitDate)) $("smokeHeroBig").textContent = big;
+  $("smokeHeroDetail").textContent = detail;
+  const showPlan = mode === "planning" || (mode === "quit" && !s.quitDate);
+  $("smokePlanCard").classList.toggle("hidden", !showPlan);
+  $("smokeCutCard").classList.toggle("hidden", mode !== "cutting");
+  const showMs = mode === "quit" && !!s.quitDate;
+  $("smokeMsCard").classList.toggle("hidden", !showMs);
+  $("smokeBadgeCard").classList.toggle("hidden", !showMs);
+  if(showPlan){
+    if(s.quitDate){
+      const d = new Date(s.quitDate);
+      $("smokeQuitDate").value = d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(d.getHours())+":"+pad(d.getMinutes());
+    } else { $("smokeQuitDate").value = ""; }
+    renderSmokeChecklist();
+  }
+  if(mode === "cutting"){
+    $("smokeLimit").value = s.dailyLimit || "";
+    $("smokeTodayCount").textContent = smokeTodayCount();
+    $("smokeTodayLimit").textContent = s.dailyLimit || "\u2013";
+    const lm = s.dailyLimit || 0, tc2 = smokeTodayCount();
+    $("smokeCutMsg").textContent = lm > 0
+      ? (tc2 <= lm ? "Under your limit \u2014 nice pacing." : "Over today's limit \u2014 tomorrow is a fresh page. No judgment.")
+      : "Set a daily limit to track against.";
+    renderSmokeCutChart();
+  }
+  renderSmokeHealth();
+  renderSmokeMsList();
+  renderSmokeBadges();
+  renderSmokeCheckin();
+  renderSmokePatterns();
+  renderSmokeReasons();
+  renderSmokeSlips();
+}
+function renderSmokeTick(){
+  const s = smk();
+  if(!s.mode || $("smokeMain").classList.contains("hidden")) return;
+  const el = $("smokeHeroBig");
+  if(!el) return;
+  if(s.mode === "quit" && s.quitDate){
+    const ms = Date.now() - new Date(s.quitDate).getTime();
+    if(ms < 0) return;
+    el.textContent = Math.floor(ms/86400000) + "d " + Math.floor(ms%86400000/3600000) + "h " +
+      Math.floor(ms%3600000/60000) + "m " + Math.floor(ms%60000/1000) + "s";
+  } else if(s.mode === "planning" && s.quitDate){
+    const ms = new Date(s.quitDate).getTime() - Date.now();
+    if(ms < 0) return;
+    el.textContent = Math.floor(ms/86400000) + "d " + Math.floor(ms%86400000/3600000) + "h " +
+      Math.floor(ms%3600000/60000) + "m";
+  }
+}
+function renderSmokeChecklist(){
+  const s = smk();
+  let html = "";
+  SMOKE_PREQUIT.forEach(function(t, i){
+    const done = !!s.preQuit[i];
+    html += '<label class="row" style="gap:10px; cursor:pointer; padding:6px 0;">' +
+      '<input type="checkbox" data-pq="' + i + '" style="width:auto; margin:0;"' + (done ? " checked" : "") + ">" +
+      '<span' + (done ? ' style="text-decoration:line-through; opacity:.6;"' : "") + ">" + esc(t) + "</span></label>";
+  });
+  $("smokeChecklist").innerHTML = html;
+  Array.prototype.forEach.call($("smokeChecklist").querySelectorAll("input[data-pq]"), function(cb){
+    cb.addEventListener("change", function(){
+      smk().preQuit[cb.getAttribute("data-pq")] = cb.checked;
+      saveState(); renderSmokeChecklist();
+    });
+  });
+}
+function renderSmokeCutChart(){
+  const s = smk();
+  const vals = [];
+  for(let i=13;i>=0;i--){ const d = new Date(); d.setDate(d.getDate()-i); vals.push(s.cigLogs[localKey(d)]||0); }
+  const mx = Math.max.apply(null, vals.concat([s.dailyLimit||0, 0.001]));
+  const names = ["S","M","T","W","T","F","S"];
+  let html = "";
+  for(let i=0;i<14;i++){
+    const d = new Date(); d.setDate(d.getDate()-(13-i));
+    const h = Math.min(38, 3 + (vals[i]/mx)*35);
+    const over = (s.dailyLimit||0) > 0 && vals[i] > s.dailyLimit;
+    html += '<div class="wday' + (i === 13 ? " today" : "") + '"><div class="b"><div class="fill" style="height:' +
+      h.toFixed(0) + "px" + (over ? ";background:var(--warn);" : "") + '"></div></div>' +
+      "<div>" + names[d.getDay()] + '</div><div class="muted">' + (vals[i] > 0 ? vals[i] : "") + "</div></div>";
+  }
+  $("smokeCutChart").innerHTML = '<div class="wstrip" style="grid-template-columns:repeat(14,1fr);">' + html + "</div>" +
+    '<div class="legend"><span><span class="sw" style="background:var(--accent2);"></span>cigarettes</span>' +
+    ((s.dailyLimit||0) > 0 ? ' <span><span class="sw" style="background:var(--warn);"></span>over limit</span>' : "") + "</div>";
+}
+function renderSmokeHealth(){
+  const hrs = smk().mode === "quit" ? smokeHours() : 0;
+  let html = "";
+  for(const h of SMOKE_HEALTH){
+    const hit = hrs >= h.h;
+    html += '<div class="tlitem' + (hit ? " hit" : "") + '"><div class="t">' + esc(h.t) +
+      (hit ? ' <span class="muted">\u2014 reached</span>' : "") + '</div><div class="muted">' + esc(h.x) + "</div></div>";
+  }
+  $("smokeHealthList").innerHTML = html;
+}
+function renderSmokeMsList(){
+  const d = smokeDays();
+  let html = "", nextFlag = true;
+  for(const m of SMOKE_MS){
+    const done = d >= m.d;
+    const isNext = !done && nextFlag;
+    if(isNext) nextFlag = false;
+    html += '<div class="msrow' + (done ? " done" : "") + (isNext ? " next" : "") + '">' +
+      '<div class="msdot">' + (done ? "&#x2713;" : (isNext ? "&#x25B8;" : m.d)) + "</div>" +
+      '<div class="mslabel">' + esc(m.label) + (done ? ' <span class="muted">\u2014 reached</span>' : "") + "</div></div>";
+  }
+  $("smokeMsList").innerHTML = html;
+}
+function renderSmokeBadges(){
+  const d = smokeDays(), av = smokeCigsAvoided();
+  let sh = "";
+  SMOKE_MS.forEach(function(m){
+    const earned = d >= m.d;
+    sh += '<div class="badge' + (earned ? " earned" : "") + '"><div class="b">' + (earned ? "\uD83C\uDFC5" : "\u23F3") +
+      "</div><div>" + esc(m.label) + "</div></div>";
+  });
+  SMOKE_CIG_BADGES.forEach(function(b){
+    const earned = av >= b.n;
+    sh += '<div class="badge' + (earned ? " earned" : "") + '"><div class="b">' + b.ico +
+      "</div><div>" + esc(b.label) + "</div></div>";
+  });
+  $("smokeBadgeShelf").innerHTML = sh;
+}
+function checkSmokeBadges(){
+  const s = smk();
+  if(s.mode !== "quit" || !s.quitDate) return;
+  const d = smokeDays();
+  for(const m of SMOKE_MS){
+    const id = "smkM" + m.d;
+    if(d >= m.d && state.celebrated.indexOf(id) === -1){
+      state.celebrated.push(id);
+      saveState();
+      showCelebration(
+        m.label + " smoke-free!",
+        m.sub || "Every craving resisted counts. You're doing this.",
+        m.label.toUpperCase() + " SMOKE-FREE",
+        "Soberforever \u2022 one day at a time"
+      );
+      return;
+    }
+  }
+  const av = smokeCigsAvoided();
+  for(const b of SMOKE_CIG_BADGES){
+    if(av >= b.n && state.celebrated.indexOf(b.id) === -1){
+      state.celebrated.push(b.id);
+      saveState();
+      showCelebration(
+        b.label + "!",
+        "That's " + b.n.toLocaleString() + " cigarettes you didn't smoke. Imagine the pile.",
+        b.ico + " " + b.label.toUpperCase(),
+        "Soberforever \u2022 one day at a time"
+      );
+      return;
+    }
+  }
+}
+let smokeCiStatus = null, smokeCiCraving = 0, smokeCiTriggers = [], smokeSlipTriggers = [];
+function renderSmokeTriggerChips(){
+  const el = $("smokeTriggerTags");
+  el.innerHTML = "";
+  SMOKE_TRIGGERS.forEach(function(t){
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = t;
+    if(smokeCiTriggers.indexOf(t) !== -1) b.classList.add("on");
+    b.addEventListener("click", function(){
+      const i = smokeCiTriggers.indexOf(t);
+      if(i === -1) smokeCiTriggers.push(t); else smokeCiTriggers.splice(i,1);
+      b.classList.toggle("on");
+    });
+    el.appendChild(b);
+  });
+}
+function renderSmokeSlipTriggerChips(){
+  const el = $("smokeSlipTriggerTags");
+  el.innerHTML = "";
+  SMOKE_TRIGGERS.forEach(function(t){
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = t;
+    if(smokeSlipTriggers.indexOf(t) !== -1) b.classList.add("on");
+    b.addEventListener("click", function(){
+      const i = smokeSlipTriggers.indexOf(t);
+      if(i === -1) smokeSlipTriggers.push(t); else smokeSlipTriggers.splice(i,1);
+      b.classList.toggle("on");
+    });
+    el.appendChild(b);
+  });
+}
+function renderSmokeStrip(){
+  const s = smk();
+  const days = ["S","M","T","W","T","F","S"];
+  let html = "";
+  for(let i=6;i>=0;i--){
+    const d = new Date(); d.setDate(d.getDate()-i);
+    const k = localKey(d);
+    const c = s.smokeCheckins[k];
+    const cls = c ? (c.status === "free" ? "free" : "smoked") : "";
+    html += '<span class="smkdot ' + cls + '" title="' + esc(fmtDate(k)) +
+      (c ? (c.status === "free" ? " \u2014 smoke-free" : " \u2014 smoked") : " \u2014 not logged") + '"></span>';
+  }
+  $("smokeStrip").innerHTML = html +
+    '<p class="muted" style="margin:8px 0 0; font-size:.8rem;">' +
+    '<span class="smkdot free" style="width:12px;height:12px;margin:0 4px 0 0;"></span>smoke-free ' +
+    '<span class="smkdot smoked" style="width:12px;height:12px;margin:0 4px 0 10px;"></span>smoked ' +
+    '<span class="smkdot" style="width:12px;height:12px;margin:0 4px 0 10px;"></span>not logged</p>';
+}
+function saveSmokeCheckin(status){
+  const s = smk();
+  s.smokeCheckins[todayKey()] = {status:status, craving:smokeCiCraving||0, triggers:smokeCiTriggers.slice()};
+  smokeCiStatus = status;
+  saveState(); renderSmokeCheckin();
+}
+function renderSmokeCheckin(){
+  const s = smk();
+  const c = s.smokeCheckins[todayKey()] || {};
+  if(smokeCiStatus === null) smokeCiStatus = c.status || null;
+  if(!smokeCiCraving) smokeCiCraving = c.craving || 0;
+  if(!smokeCiTriggers.length && c.triggers && c.triggers.length) smokeCiTriggers = c.triggers.slice();
+  $("smokeFree").classList.toggle("on", smokeCiStatus === "free");
+  $("smokeSmoked").classList.toggle("on", smokeCiStatus === "smoked");
+  buildDots("smokeCravingDots", smokeCiCraving, function(v){ smokeCiCraving = v; });
+  renderSmokeTriggerChips();
+  renderSmokeStrip();
+  $("smokeSlipCard").classList.toggle("hidden", !(smokeCiStatus === "smoked" || s.smokeSlips.length));
+  $("smokeSlipOffer").classList.toggle("hidden", smokeCiStatus !== "smoked");
+}
+function renderSmokeSlips(){
+  const s = smk();
+  const el = $("smokeSlipList");
+  if(!s.smokeSlips.length){
+    el.innerHTML = '<p class="muted" style="margin:0;">Nothing here. And if there ever is, it will be met with honesty \u2014 not judgment.</p>';
+    return;
+  }
+  el.innerHTML = "";
+  s.smokeSlips.slice().reverse().forEach(function(sl){
+    const div = document.createElement("div");
+    div.className = "item";
+    let h = '<div class="meta">' + esc(fmtDate(sl.date)) + ' \u2022 reflected &amp; recommitted</div>';
+    if(sl.what) h += "<div><strong>What happened:</strong> " + esc(sl.what) + "</div>";
+    if(sl.triggers && sl.triggers.length) h += '<div class="muted">Sparks: ' + esc(sl.triggers.join(", ")) + "</div>";
+    if(sl.diff) h += "<div><strong>Next time:</strong> " + esc(sl.diff) + "</div>";
+    if(sl.kind) h += '<div style="font-style:italic; margin-top:4px;">\u201C' + esc(sl.kind) + "\u201D</div>";
+    div.innerHTML = h;
+    const acts = document.createElement("div");
+    acts.className = "actions";
+    const del = document.createElement("button");
+    del.className = "small ghost"; del.textContent = "Delete";
+    del.addEventListener("click", function(){
+      if(!confirm("Delete this reflection?")) return;
+      const ssd = smk();
+      ssd.smokeSlips = ssd.smokeSlips.filter(function(q){ return q.id !== sl.id; });
+      saveState(); renderSmokeSlips();
+    });
+    acts.appendChild(del); div.appendChild(acts); el.appendChild(div);
+  });
+}
+function renderSmokePatterns(){
+  const s = smk();
+  const el = $("smokePatternBars");
+  const cutoff = new Date(); cutoff.setDate(cutoff.getDate()-30);
+  const counts = {}; SMOKE_TRIGGERS.forEach(function(t){ counts[t] = 0; });
+  let total = 0;
+  Object.keys(s.smokeCheckins).forEach(function(k){
+    if(keyToDate(k) < cutoff) return;
+    const c = s.smokeCheckins[k];
+    (c.triggers || []).forEach(function(t){ if(counts[t] != null){ counts[t]++; total++; } });
+  });
+  if(!total){
+    el.innerHTML = '<p class="muted" style="margin:0;">No trigger tags yet \u2014 tag what sparks a craving when you check in, and your patterns will show up here.</p>';
+    return;
+  }
+  const mx = Math.max.apply(null, SMOKE_TRIGGERS.map(function(t){ return counts[t]; }));
+  let html = "";
+  SMOKE_TRIGGERS.forEach(function(t){
+    const pct = mx ? Math.round(counts[t]/mx*100) : 0;
+    html += '<div class="pbar"><div class="pl">' + esc(t) + '</div>' +
+      '<div class="track"><div class="fillbar" style="width:' + pct + '%"></div></div>' +
+      '<div class="pc">' + counts[t] + "</div></div>";
+  });
+  html += '<p class="muted mt8" style="margin-bottom:0;">From your check-ins over the last 30 days. Knowing your triggers is half the battle.</p>';
+  el.innerHTML = html;
+}
+function renderSmokeReasons(){
+  const s = smk();
+  const w = $("smokeReasonWall");
+  if(!s.smokeReasons.length){
+    w.innerHTML = '<p class="muted">No reasons yet \u2014 add the ones that matter most. Health, money, family, smell, freedom... yours.</p>';
+    return;
+  }
+  w.innerHTML = "";
+  s.smokeReasons.forEach(function(r){
+    const div = document.createElement("div");
+    div.className = "wallcard";
+    div.innerHTML = "<div>" + esc(r.text) + "</div>";
+    const x = document.createElement("button");
+    x.textContent = "\u00D7";
+    x.setAttribute("aria-label","Remove reason");
+    x.addEventListener("click", function(){
+      const ssr = smk();
+      ssr.smokeReasons = ssr.smokeReasons.filter(function(q){ return q.id !== r.id; });
+      saveState(); renderSmokeReasons();
+    });
+    div.appendChild(x);
+    w.appendChild(div);
+  });
+}
+let smokeUrgeInt = null;
+function smokeUrgeReset(){
+  if(smokeUrgeInt){ clearInterval(smokeUrgeInt); smokeUrgeInt = null; }
+  const t = $("smokeUrgeTime"); if(t) t.textContent = "5:00";
+  const m = $("smokeUrgeMsg"); if(m) m.textContent = "";
+}
+$("smokeModePlan").addEventListener("click", function(){ setSmokeMode("planning"); });
+$("smokeModeQuit").addEventListener("click", function(){ setSmokeMode("quit"); });
+$("smokeModeCut").addEventListener("click", function(){ setSmokeMode("cutting"); });
+$("smokeChangeMode").addEventListener("click", function(){
+  if(!confirm("Change your smoke-free plan? Your logged data stays.")) return;
+  smk().mode = null;
+  saveState(); renderSmoke();
+});
+$("smokeQuitDateSave").addEventListener("click", function(){
+  const v = $("smokeQuitDate").value;
+  if(!v){ alert("Pick a date and time first."); return; }
+  smk().quitDate = new Date(v).toISOString();
+  saveState(); renderSmoke();
+});
+$("smokeLogCig").addEventListener("click", function(){
+  const s = smk(), k = todayKey();
+  s.cigLogs[k] = (s.cigLogs[k]||0) + 1;
+  saveState(); renderSmoke();
+});
+$("smokeLimit").addEventListener("change", function(){
+  const v = parseInt($("smokeLimit").value, 10);
+  smk().dailyLimit = v > 0 ? v : 0;
+  saveState(); renderSmoke();
+});
+$("smokeReadyQuit").addEventListener("click", function(){
+  smk().mode = "quit";
+  smk().quitDate = null;
+  saveState(); renderSmoke();
+  $("smokePlanCard").scrollIntoView();
+});
+$("smokeUrgeStart").addEventListener("click", function(){
+  smokeUrgeReset();
+  let left = 300;
+  $("smokeUrgeMsg").textContent = "Ride the wave. Notice it rise, peak, and fade \u2014 you don't have to act on it.";
+  smokeUrgeInt = setInterval(function(){
+    left--;
+    $("smokeUrgeTime").textContent = Math.floor(left/60) + ":" + pad(left%60);
+    if(left <= 0){
+      smokeUrgeReset();
+      $("smokeUrgeMsg").textContent = "You rode it out. That wave has passed \u2014 be proud of that. \uD83D\uDCAA";
+    }
+  }, 1000);
+});
+$("smokeUrgeCancel").addEventListener("click", function(){
+  smokeUrgeReset();
+  $("smokeUrgeMsg").textContent = "Timer cancelled. You're still here, and that counts.";
+});
+$("smokeBreath").addEventListener("click", function(){ switchTab("sos"); });
+$("smokeFree").addEventListener("click", function(){ saveSmokeCheckin("free"); });
+$("smokeSmoked").addEventListener("click", function(){ saveSmokeCheckin("smoked"); });
+$("smokeReasonAdd").addEventListener("click", function(){
+  const v = $("smokeReasonInput").value.trim();
+  if(!v) return;
+  smk().smokeReasons.unshift({id:uid(), text:v});
+  $("smokeReasonInput").value = "";
+  saveState(); renderSmokeReasons();
+});
+$("smokeReflectOpen").addEventListener("click", function(){
+  smokeSlipTriggers = [];
+  renderSmokeSlipTriggerChips();
+  $("smokeSlipWhat").value = ""; $("smokeSlipDiff").value = ""; $("smokeSlipKind").value = "";
+  $("smokeReflectForm").classList.remove("hidden");
+});
+$("smokeReflectDismiss").addEventListener("click", function(){ $("smokeSlipOffer").classList.add("hidden"); });
+$("smokeSlipCancel").addEventListener("click", function(){ $("smokeReflectForm").classList.add("hidden"); });
+$("smokeSlipSave").addEventListener("click", function(){
+  smk().smokeSlips.push({
+    id:uid(), date:todayKey(),
+    what:$("smokeSlipWhat").value.trim(), triggers:smokeSlipTriggers.slice(),
+    diff:$("smokeSlipDiff").value.trim(), kind:$("smokeSlipKind").value.trim()
+  });
+  saveState();
+  $("smokeReflectForm").classList.add("hidden");
+  $("smokeSlipOffer").classList.add("hidden");
+  renderSmokeSlips();
+});
+
 /* ============ RENDER ALL / INIT ============ */
 /* ============ FITNESS ============ */
 const KM_PER_MI = 1.609344;
@@ -2731,6 +3454,7 @@ function renderAll(){
   renderGratitude();
   renderMeetings();
   renderFitness();
+  renderSmoke();
   renderPatterns();
   renderWeight();
   renderSleep();
@@ -2752,8 +3476,9 @@ checkLetters();
 setInterval(function(){
   renderHero();
   renderCountdown();
+  renderSmokeTick();
 }, 1000);
-setInterval(function(){ checkMilestones(); checkLetters(); checkFitnessBadges(); }, 60000);
+setInterval(function(){ checkMilestones(); checkLetters(); checkFitnessBadges(); checkSmokeBadges(); }, 60000);
 </script>
 </body>
 </html>
