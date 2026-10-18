@@ -199,6 +199,14 @@
     border:1px solid var(--line); color:var(--text); text-decoration:none; font-weight:600; font-size:.88rem; margin:2px 4px 2px 0;}
   .rm *{transition:none !important; animation:none !important;}
   .tlarge{font-size:18px;}
+  /* fitness */
+  .fitstrip{display:grid; grid-template-columns:repeat(7,1fr); gap:6px; margin-top:10px;}
+  .fday{background:var(--bg2); border:1px solid var(--line); border-radius:10px; padding:6px 2px; text-align:center; font-size:.7rem;}
+  .fday .d{font-weight:700; font-size:.85rem;}
+  .fday .dot{width:12px; height:12px; border-radius:50%; margin:6px auto 4px; background:transparent; border:2px solid var(--line);}
+  .fday.active{border-color:var(--good);}
+  .fday.active .dot{background:var(--good); border-color:var(--good);}
+  .fday .m{color:var(--muted); font-size:.68rem;}
   @media print{
     body{padding-bottom:0;}
     body > *:not(#reportOverlay){display:none !important;}
@@ -464,6 +472,113 @@
     </div>
   </section>
 
+  <!-- FITNESS -->
+  <section id="tab-fitness" class="hidden">
+    <div class="card center">
+      <h2>&#x1F3C3; Move your body</h2>
+      <p class="muted" style="margin:0 0 10px;">Every walk counts. Rest days count too &mdash; movement is a celebration, never a chore.</p>
+      <button id="fitQuick">&#x1F3C3; Log today's walk</button>
+    </div>
+
+    <div class="card">
+      <h2 id="actFormTitle">&#x2795; Log activity</h2>
+      <input type="hidden" id="actId" value="">
+      <label class="lbl" for="actDate">Date</label>
+      <input type="date" id="actDate">
+      <label class="lbl" for="actType">Type</label>
+      <select id="actType">
+        <option>Walk</option>
+        <option>Run</option>
+        <option>Hike</option>
+        <option>Bike</option>
+        <option>Swim</option>
+        <option>Other</option>
+      </select>
+      <div class="grid2">
+        <div>
+          <label class="lbl" for="actDist">Distance (<span id="actDistUnit">mi</span>)</label>
+          <input type="number" id="actDist" min="0" step="0.1" inputmode="decimal" placeholder="e.g. 2.5">
+        </div>
+        <div>
+          <label class="lbl">Duration</label>
+          <div class="row" style="flex-wrap:nowrap;">
+            <input type="number" id="actHrs" min="0" max="23" inputmode="numeric" placeholder="h" aria-label="Hours">
+            <input type="number" id="actMins" min="0" max="59" inputmode="numeric" placeholder="m" aria-label="Minutes">
+          </div>
+        </div>
+      </div>
+      <label class="lbl" for="actRoute">Route name (optional)</label>
+      <input type="text" id="actRoute" placeholder="e.g. morning loop">
+      <label class="lbl" for="actNotes">Notes (optional)</label>
+      <textarea id="actNotes" placeholder="How did it feel?"></textarea>
+      <div class="row mt12">
+        <button id="actSave" style="flex:1;">Save activity</button>
+        <button id="actCancel" class="ghost hidden" style="flex:1;">Cancel</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>&#x1F4CA; Stats</h2>
+      <div class="stat3">
+        <div class="s"><div class="v" id="fitTotal">0</div><div class="k">activities</div></div>
+        <div class="s"><div class="v" id="fitDist">0</div><div class="k">total distance</div></div>
+        <div class="s"><div class="v" id="fitTime">0</div><div class="k">total time</div></div>
+      </div>
+      <div class="stat3 mt8">
+        <div class="s"><div class="v" id="fitWeek">0</div><div class="k">this week</div></div>
+        <div class="s"><div class="v" id="fitLongest">&mdash;</div><div class="k">longest</div></div>
+        <div class="s"><div class="v" id="fitPace">&mdash;</div><div class="k">best pace</div></div>
+      </div>
+      <div class="row mt12" style="justify-content:space-between;">
+        <span class="muted">&#x1F525; <b id="fitStreak">0</b>-day movement streak</span>
+        <span class="muted">Movement on <b id="fitSoberPct">&mdash;</b> of sober days</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>&#x1F3AF; Weekly goals</h2>
+      <div class="grid2">
+        <div>
+          <label class="lbl" for="goalDaysInput">Active days / week</label>
+          <input type="number" id="goalDaysInput" min="0" max="7" inputmode="numeric" placeholder="e.g. 4">
+        </div>
+        <div>
+          <label class="lbl" for="goalDistInput">Distance / week (<span id="goalDistUnit">mi</span>)</label>
+          <input type="number" id="goalDistInput" min="0" step="0.5" inputmode="decimal" placeholder="e.g. 10">
+        </div>
+      </div>
+      <button id="goalSave" class="small mt8">Save goals</button>
+      <div class="mt12">
+        <div class="pbar"><div class="pl">Active days</div><div class="track"><div class="fillbar" id="goalDaysBar" style="width:0%;"></div></div><div class="pc" id="goalDaysPct"></div></div>
+        <div class="pbar"><div class="pl">Distance</div><div class="track"><div class="fillbar" id="goalDistBar" style="width:0%;"></div></div><div class="pc" id="goalDistPct"></div></div>
+      </div>
+      <p class="muted" id="goalHint" style="margin:8px 0 0;"></p>
+    </div>
+
+    <div class="card">
+      <h2>&#x1F4C8; Trends</h2>
+      <h3>Distance &mdash; last 14 days</h3>
+      <div class="chartbox" id="fitChart14"></div>
+      <h3>Weekly totals &mdash; last 8 weeks</h3>
+      <div class="chartbox" id="fitChart8"></div>
+    </div>
+
+    <div class="card">
+      <h2>&#x1F3C6; Fitness badges</h2>
+      <div class="shelf" id="fitBadgeShelf"></div>
+    </div>
+
+    <div class="card">
+      <h2>&#x1F4C5; This week</h2>
+      <div class="fitstrip" id="fitWeekStrip"></div>
+    </div>
+
+    <div class="card">
+      <h2>&#x1F4DD; Activity log</h2>
+      <div id="actList"></div>
+    </div>
+  </section>
+
   <!-- SOS -->
   <section id="tab-sos" class="hidden">
     <div class="card center">
@@ -654,6 +769,11 @@
           <input type="number" id="setGoalWeight" min="0" step="0.1" inputmode="decimal" placeholder="e.g. 180">
         </div>
       </div>
+      <label class="lbl" for="setDistUnit">Distance unit</label>
+      <select id="setDistUnit">
+        <option value="mi">miles</option>
+        <option value="km">kilometers</option>
+      </select>
       <h3>&#x1F4DE; SOS quick contacts</h3>
       <div id="contactSettingsList"></div>
       <div class="row mt8">
@@ -707,6 +827,7 @@
 <nav class="tabbar" id="tabbar">
   <button data-tab="home" class="on"><span class="ico">&#x1F3E0;</span>Today</button>
   <button data-tab="journey"><span class="ico">&#x1F5FA;&#xFE0F;</span>Journey</button>
+  <button data-tab="fitness"><span class="ico">&#x1F3C3;</span>Fitness</button>
   <button data-tab="sos"><span class="ico">&#x1F6A8;</span>SOS</button>
   <button data-tab="meetings"><span class="ico">&#x1F91D;</span>Meetings</button>
   <button data-tab="resources"><span class="ico">&#x1F6DF;</span>Help</button>
@@ -786,7 +907,8 @@ function defaultState(){
     weighIns:[], weightUnit:"lbs", goalWeight:null,
     sleepLog:{}, habits:[], gratitude:[],
     sosContacts:[], water:{},
-    slips:[], futureLetters:[], promptIdx:0, reduceMotion:null, textSize:"normal"
+    slips:[], futureLetters:[], promptIdx:0, reduceMotion:null, textSize:"normal",
+    activities:[], fitnessGoals:{daysPerWeek:0,distPerWeek:0}, distUnit:"mi"
   };
 }
 function loadState(){
@@ -1450,6 +1572,7 @@ function renderSettings(){
   $("setMtgTime").value = state.meetingTime || "17:30";
   $("setTheme").value = state.theme || "dark";
   $("setWeightUnit").value = weightUnit();
+  $("setDistUnit").value = distUnit();
   $("setGoalWeight").value = state.goalWeight != null ? fmtWn(state.goalWeight) : "";
   $("setReduceMotion").checked = !!state.reduceMotion;
   $("setTextSize").value = state.textSize === "large" ? "large" : "normal";
@@ -1465,6 +1588,7 @@ $("setSave").addEventListener("click", function(){
   state.reduceMotion = $("setReduceMotion").checked;
   state.textSize = $("setTextSize").value === "large" ? "large" : "normal";
   state.weightUnit = $("setWeightUnit").value === "kg" ? "kg" : "lbs";
+  state.distUnit = $("setDistUnit").value === "km" ? "km" : "mi";
   const gw = parseFloat($("setGoalWeight").value);
   state.goalWeight = gw > 0 ? toLbs(gw) : null;
   applyTheme(); saveState(); renderAll();
@@ -2228,6 +2352,369 @@ function applyA11y(){
 }
 
 /* ============ RENDER ALL / INIT ============ */
+/* ============ FITNESS ============ */
+const KM_PER_MI = 1.609344;
+const FIT_TYPES = ["Walk","Run","Hike","Bike","Swim","Other"];
+const FIT_ICONS = {Walk:"\uD83D\uDEB6", Run:"\uD83C\uDFC3", Hike:"\uD83E\uDD7E", Bike:"\uD83D\uDEB4", Swim:"\uD83C\uDFCA", Other:"\u2B50"};
+function distUnit(){ return state.distUnit === "km" ? "km" : "mi"; }
+function toMi(v){
+  v = parseFloat(v) || 0;
+  return distUnit() === "km" ? v / KM_PER_MI : v;
+}
+function fromMi(mi){ return distUnit() === "km" ? mi * KM_PER_MI : mi; }
+function fmtDist(mi){
+  const v = Math.round(fromMi(mi)*10)/10;
+  return v + " " + distUnit();
+}
+function paceMinPerUnit(a){
+  const d = fromMi(a.distMi || 0);
+  if(d <= 0 || !(a.mins > 0)) return null;
+  return a.mins / d;
+}
+function fmtPace(p){
+  if(p == null || !isFinite(p)) return "\u2014";
+  const m = Math.floor(p), s = Math.round((p - m) * 60);
+  return m + ":" + pad(s) + " /" + distUnit();
+}
+function fmtTime(mins){
+  mins = Math.round(mins || 0);
+  const h = Math.floor(mins/60), m = mins % 60;
+  return h > 0 ? h + "h " + m + "m" : m + "m";
+}
+function fitDistLabel(n){
+  return distUnit() === "km" ? Math.round(n*KM_PER_MI) + " km" : n + " mi";
+}
+function activityDays(){
+  const s = {};
+  state.activities.forEach(function(a){ s[a.date] = true; });
+  return s;
+}
+function activeStreak(){
+  const days = activityDays();
+  let n = 0;
+  const d = new Date();
+  if(!days[localKey(d)]) d.setDate(d.getDate() - 1);
+  while(days[localKey(d)]){ n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
+function weekDistMi(wk){
+  return state.activities.reduce(function(sum,a){
+    return sum + (weekKey(keyToDate(a.date)) === wk ? (a.distMi||0) : 0);
+  }, 0);
+}
+function weekActiveDays(wk){
+  const s = {};
+  state.activities.forEach(function(a){
+    if(weekKey(keyToDate(a.date)) === wk) s[a.date] = true;
+  });
+  return Object.keys(s).length;
+}
+function longestActivity(){
+  let best = null;
+  state.activities.forEach(function(a){
+    if(!best || (a.distMi||0) > (best.distMi||0)) best = a;
+  });
+  return best;
+}
+function bestPace(){
+  let bp = null;
+  state.activities.forEach(function(a){
+    const p = paceMinPerUnit(a);
+    if(p != null && (bp == null || p < bp)) bp = p;
+  });
+  return bp;
+}
+const FIT_BADGES = [
+  {id:"fitFirst", n:1,   kind:"count",  label:"First activity", ico:"\uD83C\uDFC1"},
+  {id:"fitA10",   n:10,  kind:"count",  label:"10 activities",  ico:"\uD83E\uDD47"},
+  {id:"fitA25",   n:25,  kind:"count",  label:"25 activities",  ico:"\uD83E\uDD48"},
+  {id:"fitA50",   n:50,  kind:"count",  label:"50 activities",  ico:"\uD83E\uDD49"},
+  {id:"fitA100",  n:100, kind:"count",  label:"100 activities", ico:"\uD83C\uDFC6"},
+  {id:"fitD25",   n:25,  kind:"dist",   label:"25 mi",          ico:"\uD83D\uDEB6"},
+  {id:"fitD50",   n:50,  kind:"dist",   label:"50 mi",          ico:"\uD83E\uDD7E"},
+  {id:"fitD100",  n:100, kind:"dist",   label:"100 mi",         ico:"\u26F0"},
+  {id:"fitD250",  n:250, kind:"dist",   label:"250 mi",         ico:"\uD83C\uDF0D"},
+  {id:"fitStreak7", n:7, kind:"streak", label:"7-day streak",   ico:"\uD83D\uDD25"}
+];
+function fitBadgeSub(b){
+  if(b.kind === "dist") return "That's real ground covered. Your legs are writing quite a story.";
+  if(b.kind === "streak") return "Seven days in a row of showing up for your body. That's a habit taking root.";
+  return state.activities.length + " activities logged. Every single one of them counted.";
+}
+function checkFitnessBadges(){
+  const count = state.activities.length;
+  const totalMi = state.activities.reduce(function(s,a){ return s + (a.distMi||0); }, 0);
+  const streak = activeStreak();
+  for(const b of FIT_BADGES){
+    const val = b.kind === "count" ? count : b.kind === "dist" ? totalMi : streak;
+    if(val >= b.n && state.celebrated.indexOf(b.id) === -1){
+      state.celebrated.push(b.id);
+      saveState();
+      const lbl = b.kind === "dist" ? fitDistLabel(b.n) : b.label;
+      showCelebration(
+        lbl + "!",
+        fitBadgeSub(b),
+        b.ico + " " + lbl.toUpperCase(),
+        "Soberforever \u2022 one day at a time"
+      );
+      break;
+    }
+  }
+}
+function resetActForm(){
+  $("actId").value = "";
+  $("actDate").value = todayKey();
+  $("actType").value = "Walk";
+  $("actDist").value = "";
+  $("actHrs").value = "";
+  $("actMins").value = "";
+  $("actRoute").value = "";
+  $("actNotes").value = "";
+  $("actFormTitle").textContent = "\u2795 Log activity";
+  $("actCancel").classList.add("hidden");
+}
+function editActivity(id){
+  const a = state.activities.find(function(x){ return x.id === id; });
+  if(!a) return;
+  $("actId").value = a.id;
+  $("actDate").value = a.date;
+  $("actType").value = FIT_TYPES.indexOf(a.type) !== -1 ? a.type : "Other";
+  $("actDist").value = a.distMi > 0 ? Math.round(fromMi(a.distMi)*10)/10 : "";
+  $("actHrs").value = Math.floor((a.mins||0)/60) || "";
+  $("actMins").value = (a.mins||0)%60 || "";
+  $("actRoute").value = a.route || "";
+  $("actNotes").value = a.notes || "";
+  $("actFormTitle").textContent = "\u270F\uFE0F Edit activity";
+  $("actCancel").classList.remove("hidden");
+  $("actFormTitle").scrollIntoView();
+}
+$("fitQuick").addEventListener("click", function(){
+  resetActForm();
+  $("actDate").value = todayKey();
+  $("actType").value = "Walk";
+  switchTab("fitness");
+  $("actFormTitle").scrollIntoView();
+});
+$("actCancel").addEventListener("click", function(){ resetActForm(); });
+$("actSave").addEventListener("click", function(){
+  const date = $("actDate").value || todayKey();
+  const type = $("actType").value;
+  const distMi = Math.max(0, toMi($("actDist").value));
+  const hrs = Math.max(0, parseInt($("actHrs").value, 10) || 0);
+  const mns = Math.min(59, Math.max(0, parseInt($("actMins").value, 10) || 0));
+  const mins = hrs*60 + mns;
+  const route = $("actRoute").value.trim();
+  const notes = $("actNotes").value.trim();
+  const id = $("actId").value;
+  if(id){
+    const a = state.activities.find(function(x){ return x.id === id; });
+    if(a){ a.date = date; a.type = type; a.distMi = distMi; a.mins = mins; a.route = route; a.notes = notes; }
+  } else {
+    const prevMax = state.activities.reduce(function(m,a){ return Math.max(m, a.distMi||0); }, 0);
+    state.activities.push({id:uid(), date:date, type:type, distMi:distMi, mins:mins, route:route, notes:notes, ts:Date.now()});
+    saveState();
+    if(distMi > prevMax && prevMax > 0 && state.celebrated.indexOf("fitpr") === -1){
+      state.celebrated.push("fitpr");
+      saveState();
+      showCelebration(
+        "New personal record!",
+        "Your longest activity yet \u2014 " + fmtDist(distMi) + ". Your body is getting stronger.",
+        "\uD83C\uDFC6 NEW PR",
+        "Soberforever \u2022 one day at a time"
+      );
+    }
+  }
+  saveState();
+  resetActForm();
+  renderFitness();
+  checkFitnessBadges();
+});
+$("goalSave").addEventListener("click", function(){
+  const d = Math.max(0, Math.min(7, parseInt($("goalDaysInput").value, 10) || 0));
+  const mi = Math.max(0, toMi($("goalDistInput").value));
+  state.fitnessGoals = {daysPerWeek:d, distPerWeek:mi};
+  saveState();
+  renderGoals();
+});
+function renderFitStats(){
+  const n = state.activities.length;
+  $("fitTotal").textContent = n;
+  const totalMi = state.activities.reduce(function(s,a){ return s + (a.distMi||0); }, 0);
+  $("fitDist").textContent = fmtDist(totalMi);
+  const totalMin = state.activities.reduce(function(s,a){ return s + (a.mins||0); }, 0);
+  $("fitTime").textContent = fmtTime(totalMin);
+  $("fitWeek").textContent = fmtDist(weekDistMi(weekKey(new Date())));
+  const lg = longestActivity();
+  $("fitLongest").textContent = lg && lg.distMi > 0 ? fmtDist(lg.distMi) : "\u2014";
+  $("fitPace").textContent = fmtPace(bestPace());
+  $("fitStreak").textContent = activeStreak();
+  if(state.soberDate){
+    const days = activityDays();
+    const sd = localKey(new Date(state.soberDate));
+    let cnt = 0;
+    for(const k in days){ if(k >= sd) cnt++; }
+    const el = daysElapsed();
+    $("fitSoberPct").textContent = el > 0 ? Math.min(100, Math.round(cnt/el*100)) + "%" : "\u2014";
+  } else {
+    $("fitSoberPct").textContent = "\u2014";
+  }
+}
+function renderGoals(){
+  const g = state.fitnessGoals || {daysPerWeek:0, distPerWeek:0};
+  $("goalDaysInput").value = g.daysPerWeek || "";
+  $("goalDistInput").value = g.distPerWeek ? Math.round(fromMi(g.distPerWeek)*10)/10 : "";
+  $("goalDistUnit").textContent = distUnit();
+  const wk = weekKey(new Date());
+  const wd = weekActiveDays(wk), wmi = weekDistMi(wk);
+  if(g.daysPerWeek > 0){
+    const pct = Math.min(100, Math.round(wd/g.daysPerWeek*100));
+    $("goalDaysBar").style.width = pct + "%";
+    $("goalDaysPct").textContent = wd + "/" + g.daysPerWeek;
+  } else {
+    $("goalDaysBar").style.width = "0%";
+    $("goalDaysPct").textContent = "\u2014";
+  }
+  if(g.distPerWeek > 0){
+    const pct = Math.min(100, Math.round(wmi/g.distPerWeek*100));
+    $("goalDistBar").style.width = pct + "%";
+    $("goalDistPct").textContent = fmtDist(wmi) + " / " + fmtDist(g.distPerWeek);
+  } else {
+    $("goalDistBar").style.width = "0%";
+    $("goalDistPct").textContent = "\u2014";
+  }
+  const hint = $("goalHint");
+  if(!g.daysPerWeek && !g.distPerWeek){
+    hint.textContent = "Set a weekly goal above \u2014 even a gentle one. Small and steady wins.";
+  } else {
+    const dDone = g.daysPerWeek > 0 && wd >= g.daysPerWeek;
+    const mDone = g.distPerWeek > 0 && wmi >= g.distPerWeek;
+    const anyGoal = (g.daysPerWeek > 0 && g.distPerWeek > 0) ? (dDone && mDone)
+      : g.daysPerWeek > 0 ? dDone : mDone;
+    hint.textContent = anyGoal
+      ? "Goal crushed this week. Nicely done. \uD83C\uDF89"
+      : "This week: " + wd + " active day" + (wd === 1 ? "" : "s") + ", " + fmtDist(wmi) + ". Keep moving.";
+  }
+}
+function renderFitChart14(){
+  const per = {};
+  state.activities.forEach(function(a){ per[a.date] = (per[a.date]||0) + a.distMi; });
+  const vals = [];
+  for(let i=13;i>=0;i--){ const d = new Date(); d.setDate(d.getDate()-i); vals.push(per[localKey(d)]||0); }
+  const mx = Math.max.apply(null, vals.concat([0.001]));
+  const names = ["S","M","T","W","T","F","S"];
+  let html = "";
+  for(let i=0;i<14;i++){
+    const d = new Date(); d.setDate(d.getDate()-(13-i));
+    const h = Math.min(38, 3 + (vals[i]/mx)*35);
+    html += '<div class="wday' + (i === 13 ? " today" : "") + '"><div class="b"><div class="fill" style="height:' + h.toFixed(0) + 'px"></div></div>' +
+      "<div>" + names[d.getDay()] + '</div><div class="muted">' + (vals[i] > 0 ? fromMi(vals[i]).toFixed(1) : "") + "</div></div>";
+  }
+  $("fitChart14").innerHTML = '<div class="wstrip" style="grid-template-columns:repeat(14,1fr);">' + html + "</div>" +
+    '<div class="legend"><span><span class="sw" style="background:var(--accent2);"></span>distance (' + esc(distUnit()) + ")</span></div>";
+}
+function renderFitChart8(){
+  const per = {};
+  state.activities.forEach(function(a){
+    const w = weekKey(keyToDate(a.date));
+    per[w] = (per[w]||0) + a.distMi;
+  });
+  const cur = weekKey(new Date());
+  const weeks = [];
+  for(let i=7;i>=0;i--){ const d = new Date(); d.setDate(d.getDate()-i*7); weeks.push(weekKey(d)); }
+  const vals = weeks.map(function(w){ return per[w]||0; });
+  const mx = Math.max.apply(null, vals.concat([0.001]));
+  let html = "";
+  weeks.forEach(function(w,i){
+    const d = keyToDate(w);
+    const h = Math.min(38, 3 + (vals[i]/mx)*35);
+    html += '<div class="wday' + (w === cur ? " today" : "") + '"><div class="b"><div class="fill" style="height:' + h.toFixed(0) + 'px"></div></div>' +
+      "<div>" + (d.getMonth()+1) + "/" + d.getDate() + '</div><div class="muted">' + (vals[i] > 0 ? fromMi(vals[i]).toFixed(0) : "") + "</div></div>";
+  });
+  $("fitChart8").innerHTML = '<div class="wstrip" style="grid-template-columns:repeat(8,1fr);">' + html + "</div>";
+}
+function renderFitBadges(){
+  const count = state.activities.length;
+  const totalMi = state.activities.reduce(function(s,a){ return s + (a.distMi||0); }, 0);
+  const streak = activeStreak();
+  let sh = "";
+  for(const b of FIT_BADGES){
+    const val = b.kind === "count" ? count : b.kind === "dist" ? totalMi : streak;
+    const earned = val >= b.n;
+    const lbl = b.kind === "dist" ? fitDistLabel(b.n) : b.label;
+    sh += '<div class="badge' + (earned ? " earned" : "") + '"><div class="b">' + b.ico + "</div><div>" + esc(lbl) + "</div></div>";
+  }
+  $("fitBadgeShelf").innerHTML = sh;
+}
+function renderFitWeek(){
+  const start = keyToDate(weekKey(new Date()));
+  const days = activityDays();
+  const names = ["M","T","W","T","F","S","S"];
+  const tk = todayKey();
+  let html = "";
+  for(let i=0;i<7;i++){
+    const d = new Date(start); d.setDate(d.getDate()+i);
+    const k = localKey(d);
+    const on = !!days[k];
+    html += '<div class="fday' + (on ? " active" : "") + '"' + (k === tk ? ' style="border-color:var(--accent);"' : "") + ">" +
+      '<div class="d">' + names[i] + '</div><div class="dot"></div><div class="m">' + d.getDate() + "</div></div>";
+  }
+  $("fitWeekStrip").innerHTML = html;
+}
+function renderActList(){
+  const el = $("actList");
+  const items = state.activities.slice().sort(function(a,b){
+    if(a.date !== b.date) return a.date < b.date ? 1 : -1;
+    return (b.ts||0) - (a.ts||0);
+  });
+  if(!items.length){
+    el.innerHTML = '<p class="muted">No activities yet. Your morning walk is a great place to start.</p>';
+    return;
+  }
+  el.innerHTML = "";
+  items.slice(0,30).forEach(function(a){
+    const div = document.createElement("div");
+    div.className = "item";
+    const pace = paceMinPerUnit(a);
+    div.innerHTML = '<div class="meta">' + esc(fmtDate(a.date)) + "</div>" +
+      '<div style="font-weight:700;">' + (FIT_ICONS[a.type] || "\u2B50") + " " + esc(a.type) +
+      (a.distMi > 0 ? " \u2022 " + esc(fmtDist(a.distMi)) : "") +
+      (a.mins > 0 ? " \u2022 " + esc(fmtTime(a.mins)) : "") +
+      (pace != null ? " \u2022 " + esc(fmtPace(pace)) : "") + "</div>" +
+      (a.route ? "<div>" + esc(a.route) + "</div>" : "") +
+      (a.notes ? "<div class='muted'>" + esc(a.notes) + "</div>" : "");
+    const acts = document.createElement("div");
+    acts.className = "actions";
+    const ed = document.createElement("button");
+    ed.className = "small ghost"; ed.textContent = "Edit";
+    ed.addEventListener("click", function(){ editActivity(a.id); });
+    const del = document.createElement("button");
+    del.className = "small ghost"; del.textContent = "Delete";
+    del.addEventListener("click", function(){
+      if(!confirm("Delete this activity?")) return;
+      state.activities = state.activities.filter(function(q){ return q.id !== a.id; });
+      saveState();
+      renderFitness();
+    });
+    acts.appendChild(ed);
+    acts.appendChild(del);
+    div.appendChild(acts);
+    el.appendChild(div);
+  });
+}
+function renderFitness(){
+  const unit = distUnit();
+  $("actDistUnit").textContent = unit;
+  $("goalDistUnit").textContent = unit;
+  if(!$("actId").value) $("actDate").value = todayKey();
+  renderFitStats();
+  renderGoals();
+  renderFitChart14();
+  renderFitChart8();
+  renderFitBadges();
+  renderFitWeek();
+  renderActList();
+}
+
 function renderAll(){
   applyTheme();
   renderHero();
@@ -2243,6 +2730,7 @@ function renderAll(){
   renderJournal();
   renderGratitude();
   renderMeetings();
+  renderFitness();
   renderPatterns();
   renderWeight();
   renderSleep();
@@ -2265,7 +2753,7 @@ setInterval(function(){
   renderHero();
   renderCountdown();
 }, 1000);
-setInterval(function(){ checkMilestones(); checkLetters(); }, 60000);
+setInterval(function(){ checkMilestones(); checkLetters(); checkFitnessBadges(); }, 60000);
 </script>
 </body>
 </html>
