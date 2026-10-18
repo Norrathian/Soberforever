@@ -210,6 +210,28 @@
   .fday.active{border-color:var(--good);}
   .fday.active .dot{background:var(--good); border-color:var(--good);}
   .fday .m{color:var(--muted); font-size:.68rem;}
+  /* chips */
+  .chipstrip{display:flex; gap:10px; flex-wrap:wrap; margin:10px 0;}
+  .chipgrid{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-top:12px;}
+  button.chipcell, div.chipcell{background:none; border:none; box-shadow:none; padding:0; text-align:center; cursor:default; font-family:inherit;}
+  button.chipcell{cursor:pointer;}
+  .medallion{width:64px; height:64px; border-radius:50%; position:relative; margin:0 auto;
+    background:radial-gradient(circle at 32% 28%, var(--c1), var(--c2) 55%, var(--c3));
+    box-shadow:inset 0 2px 5px rgba(255,255,255,.55), inset 0 -4px 8px rgba(0,0,0,.35), 0 4px 10px rgba(0,0,0,.35);}
+  .medallion::after{content:""; position:absolute; inset:7px; border-radius:50%;
+    border:2px solid rgba(255,255,255,.4); box-shadow:inset 0 1px 3px rgba(0,0,0,.35);}
+  .medallion .ml{position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    text-align:center; font-size:.6rem; font-weight:800; line-height:1.2; padding:0 12px;
+    color:var(--ct); text-shadow:0 1px 2px rgba(0,0,0,.45);}
+  .medallion.sm{width:46px; height:46px;}
+  .medallion.sm::after{inset:5px;}
+  .medallion.sm .ml{font-size:.44rem; padding:0 8px;}
+  .medallion.big{width:140px; height:140px;}
+  .medallion.big::after{inset:14px; border-width:3px;}
+  .medallion.big .ml{font-size:1.05rem; padding:0 26px;}
+  .medallion.locked{filter:grayscale(1); opacity:.4;}
+  .chipname{font-size:.72rem; font-weight:700; margin-top:6px; color:var(--text);}
+  .chipsub{font-size:.68rem; color:var(--muted);}
   @media print{
     body{padding-bottom:0;}
     body > *:not(#reportOverlay){display:none !important;}
@@ -340,6 +362,15 @@
       </div>
       <div id="milestoneList" class="mt12"></div>
     </div>
+
+    <div class="card">
+      <h2>&#x1F3C5; My chips</h2>
+      <p class="muted" style="margin-top:0;" id="chipSummary"></p>
+      <div id="chipStrip" class="chipstrip"></div>
+      <p class="muted" id="chipNext" style="margin-bottom:0;"></p>
+      <button id="chipOpen" class="small mt8">View collection</button>
+    </div>
+
 
     <div class="card">
       <h2>&#x1F4CA; 7-day rhythm</h2>
@@ -1049,6 +1080,16 @@
   </div>
 </div>
 
+<!-- CHIP GALLERY OVERLAY -->
+<div id="chipOverlay" class="overlay hidden">
+  <div class="sheet">
+    <div id="chipGallery"></div>
+    <div class="row mt12" style="justify-content:center;">
+      <button id="chipClose" class="small ghost">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- PROGRESS REPORT OVERLAY -->
 <div id="reportOverlay" class="overlay hidden">
   <div class="sheet" style="text-align:left;">
@@ -1251,6 +1292,147 @@ function checkMilestones(){
     }
   }
 }
+
+/* ============ CHIPS ============ */
+/* Digital AA-style chip collection. Colors vary by real-world group — this follows
+   the most common progression; the milestone matters more than the exact color. */
+const CHIPS = [
+  {id:"white",   d:0,    name:"White chip",  label:"DAY 1",     c1:"#ffffff", c2:"#e2e8f0", c3:"#94a3b8", ct:"#475569",
+   line:"The desire chip \u2014 the decision to begin. Every journey starts with a single honest choice."},
+  {id:"silver",  d:1,    name:"Silver chip", label:"24 HOURS",  c1:"#f8fafc", c2:"#cbd5e1", c3:"#64748b", ct:"#334155",
+   line:"A full day sober. The first 24 hours take real courage \u2014 you did it."},
+  {id:"red30",   d:30,   name:"Red chip",    label:"30 DAYS",   c1:"#fca5a5", c2:"#ef4444", c3:"#7f1d1d", ct:"#ffffff",
+   line:"One month. Often the hardest stretch of all \u2014 and you made it through."},
+  {id:"gold60",  d:60,   name:"Gold chip",   label:"60 DAYS",   c1:"#fde68a", c2:"#eab308", c3:"#854d0e", ct:"#422006",
+   line:"Sixty days of showing up for yourself. That\u2019s becoming a habit now."},
+  {id:"green90", d:90,   name:"Green chip",  label:"90 DAYS",   c1:"#86efac", c2:"#22c55e", c3:"#14532d", ct:"#ffffff",
+   line:"Ninety days. Three months of mornings you can be proud of."},
+  {id:"purp4",   d:120,  name:"Purple chip", label:"4 MONTHS",  c1:"#d8b4fe", c2:"#a855f7", c3:"#581c87", ct:"#ffffff",
+   line:"Four months. Keep stacking those good days."},
+  {id:"pink5",   d:150,  name:"Pink chip",   label:"5 MONTHS",  c1:"#f9a8d4", c2:"#ec4899", c3:"#831843", ct:"#ffffff",
+   line:"Five months in \u2014 the new normal is looking pretty good."},
+  {id:"blue6",   d:180,  name:"Blue chip",   label:"6 MONTHS",  c1:"#93c5fd", c2:"#2563eb", c3:"#172554", ct:"#ffffff",
+   line:"Half a year. Think about how far you\u2019ve come."},
+  {id:"copper7", d:210,  name:"Copper chip", label:"7 MONTHS",  c1:"#f6c39a", c2:"#b87333", c3:"#5e3a1a", ct:"#ffffff",
+   line:"Seven months of choosing yourself, day after day."},
+  {id:"dred8",   d:240,  name:"Red chip",    label:"8 MONTHS",  c1:"#f87171", c2:"#b91c1c", c3:"#450a0a", ct:"#ffffff",
+   line:"Eight months. The hard days are getting further apart."},
+  {id:"purp9",   d:270,  name:"Purple chip", label:"9 MONTHS",  c1:"#d8b4fe", c2:"#a855f7", c3:"#581c87", ct:"#ffffff",
+   line:"Nine months. You\u2019re living proof it gets better."},
+  {id:"gold10",  d:300,  name:"Gold chip",   label:"10 MONTHS", c1:"#fde68a", c2:"#eab308", c3:"#854d0e", ct:"#422006",
+   line:"Ten months \u2014 double digits of steady, sober living."},
+  {id:"green11", d:330,  name:"Green chip",  label:"11 MONTHS", c1:"#86efac", c2:"#22c55e", c3:"#14532d", ct:"#ffffff",
+   line:"Eleven months. One more to the big one."},
+  {id:"brz1",    d:365,  name:"Bronze year", label:"1 YEAR",    c1:"#e8b86d", c2:"#a06a2c", c3:"#4a2f12", ct:"#ffffff",
+   line:"One full year. A bronze medallion for a golden achievement."},
+  {id:"brz2",    d:730,  name:"Bronze year", label:"2 YEARS",   c1:"#e8b86d", c2:"#a06a2c", c3:"#4a2f12", ct:"#ffffff",
+   line:"Two years sober. This is who you are now."},
+  {id:"brz3",    d:1095, name:"Bronze year", label:"3 YEARS",   c1:"#e8b86d", c2:"#a06a2c", c3:"#4a2f12", ct:"#ffffff",
+   line:"Three years. Your story is someone else\u2019s hope."},
+  {id:"brz4",    d:1460, name:"Bronze year", label:"4 YEARS",   c1:"#e8b86d", c2:"#a06a2c", c3:"#4a2f12", ct:"#ffffff",
+   line:"Four years of one day at a time."},
+  {id:"brz5",    d:1825, name:"Bronze year", label:"5 YEARS",   c1:"#e8b86d", c2:"#a06a2c", c3:"#4a2f12", ct:"#ffffff",
+   line:"Five years. Extraordinary \u2014 and you earned every day of it."}
+];
+function chipEarned(c){
+  if(!state.soberDate) return false;
+  if(c.d === 0) return true; /* white desire chip: the decision itself */
+  return daysElapsed() >= c.d;
+}
+function chipDateEarned(c){
+  return fmtDate(localKey(new Date(new Date(state.soberDate).getTime() + c.d * 86400000)));
+}
+function chipMedallion(c, size, locked){
+  return '<div class="medallion' + (size ? " " + size : "") + (locked ? " locked" : "") + '"' +
+    ' style="--c1:' + c.c1 + ';--c2:' + c.c2 + ';--c3:' + c.c3 + ';--ct:' + c.ct + ';">' +
+    '<div class="ml">' + esc(c.label) + "</div></div>";
+}
+function renderChips(){
+  const strip = $("chipStrip"), sum = $("chipSummary"), nxt = $("chipNext");
+  if(!strip || !sum || !nxt) return;
+  if(!state.soberDate){
+    sum.textContent = "Set your sober date to start earning chips.";
+    strip.innerHTML = ""; nxt.textContent = "";
+    return;
+  }
+  const d = daysElapsed();
+  const earned = CHIPS.filter(chipEarned);
+  sum.textContent = earned.length + " of " + CHIPS.length + " chips earned";
+  let html = "";
+  earned.forEach(function(c){ html += chipMedallion(c, "sm", false); });
+  strip.innerHTML = html;
+  const nx = CHIPS.filter(function(c){ return !chipEarned(c); })[0];
+  if(nx){
+    const togo = nx.d - d;
+    nxt.textContent = "Next chip: " + nx.name + " \u2022 " + nx.label.charAt(0) + nx.label.slice(1).toLowerCase() +
+      " (" + togo + (togo === 1 ? " day" : " days") + " to go)";
+  } else {
+    nxt.textContent = "Full set! Every chip earned. Incredible.";
+  }
+}
+function openChips(){
+  renderChipGallery();
+  $("chipOverlay").classList.remove("hidden");
+}
+function renderChipGallery(){
+  const d = daysElapsed();
+  let html = '<h2 class="center">\uD83C\uDFC5 My chip collection</h2>' +
+    '<p class="muted center" style="font-size:.85rem;">At real meetings, groups hand out physical chips to mark sober time. ' +
+    'Colors vary from group to group \u2014 there\u2019s no official rulebook \u2014 so this set follows the most common progression. ' +
+    'The milestone matters more than the exact color.</p>' +
+    '<div class="chipgrid">';
+  CHIPS.forEach(function(c){
+    const got = chipEarned(c);
+    const togo = c.d - d;
+    const sub = got ? "Earned " + chipDateEarned(c) : (togo + (togo === 1 ? " day" : " days") + " to go");
+    const tag = got ? "button" : "div";
+    const attr = got ? ' type="button" data-chip="' + c.id + '"' : "";
+    html += "<" + tag + ' class="chipcell"' + attr + ">" + chipMedallion(c, "", !got) +
+      '<div class="chipname">' + esc(c.name) + "</div>" +
+      '<div class="chipsub">' + esc(sub) + "</div></" + tag + ">";
+  });
+  html += "</div>";
+  $("chipGallery").innerHTML = html;
+}
+function showChipDetail(id){
+  const c = CHIPS.filter(function(x){ return x.id === id; })[0];
+  if(!c) return;
+  $("chipGallery").innerHTML =
+    '<button type="button" class="iconbtn" data-back="1" style="margin-bottom:8px;">&#x2190; All chips</button>' +
+    '<div class="center">' + chipMedallion(c, "big", false) +
+    '<h2 style="margin:12px 0 4px;">' + esc(c.name) + "</h2>" +
+    '<p class="muted" style="margin:0 0 10px;">' + esc(c.label) + " \u2022 earned " + esc(chipDateEarned(c)) + "</p>" +
+    '<p style="font-size:1.05rem; line-height:1.6;">\u201C' + esc(c.line) + "\u201D</p></div>";
+}
+function checkChips(){
+  if(!state.soberDate) return;
+  for(const c of CHIPS){
+    const cid = "chip-" + c.id;
+    if(chipEarned(c) && state.celebrated.indexOf(cid) === -1){
+      state.celebrated.push(cid);
+      saveState();
+      showCelebration(
+        c.name + " earned!",
+        c.line,
+        c.label + " SOBER",
+        "Soberforever \u2022 one day at a time"
+      );
+      break;
+    }
+  }
+}
+$("chipOpen").addEventListener("click", openChips);
+$("chipClose").addEventListener("click", function(){ $("chipOverlay").classList.add("hidden"); });
+$("chipGallery").addEventListener("click", function(e){
+  let t = e.target;
+  while(t && t !== this){
+    if(t.getAttribute){
+      if(t.getAttribute("data-chip")){ showChipDetail(t.getAttribute("data-chip")); return; }
+      if(t.getAttribute("data-back")){ renderChipGallery(); return; }
+    }
+    t = t.parentNode;
+  }
+});
 
 /* ============ CONFETTI ============ */
 function launchConfetti(ms){
@@ -3442,6 +3624,7 @@ function renderAll(){
   applyTheme();
   renderHero();
   renderMilestones();
+  renderChips();
   renderPledge();
   renderCountdown();
   renderCheckin();
@@ -3472,13 +3655,14 @@ function renderAll(){
 maybeOnboard();
 renderAll();
 checkMilestones();
+checkChips();
 checkLetters();
 setInterval(function(){
   renderHero();
   renderCountdown();
   renderSmokeTick();
 }, 1000);
-setInterval(function(){ checkMilestones(); checkLetters(); checkFitnessBadges(); checkSmokeBadges(); }, 60000);
+setInterval(function(){ checkMilestones(); checkChips(); checkLetters(); checkFitnessBadges(); checkSmokeBadges(); }, 60000);
 </script>
 </body>
 </html>
