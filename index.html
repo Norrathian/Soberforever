@@ -232,6 +232,14 @@
   .medallion.locked{filter:grayscale(1); opacity:.4;}
   .chipname{font-size:.72rem; font-weight:700; margin-top:6px; color:var(--text);}
   .chipsub{font-size:.68rem; color:var(--muted);}
+  /* story timeline + play the tape */
+  .stitem{opacity:0; transform:translateY(12px); transition:opacity .45s ease, transform .45s ease;}
+  .stitem.in{opacity:1; transform:none;}
+  .tapedots{display:flex; gap:7px; justify-content:center; margin:14px 0 2px;}
+  .tapedots span{width:9px; height:9px; border-radius:50%; background:var(--line);}
+  .tapedots span.on{background:var(--accent);}
+  @keyframes fadeUp{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;}}
+  .tapein{animation:fadeUp .3s ease;}
   @media print{
     body{padding-bottom:0;}
     body > *:not(#reportOverlay){display:none !important;}
@@ -371,6 +379,11 @@
       <button id="chipOpen" class="small mt8">View collection</button>
     </div>
 
+    <div class="card">
+      <h2>&#x1F4D6; Your story so far</h2>
+      <p class="muted" style="margin-top:0;" id="storySummary">Your journey, told back to you — the day you started, the chips, the meetings, the miles.</p>
+      <button id="storyOpen" class="small mt8">Play my story</button>
+    </div>
 
     <div class="card">
       <h2>&#x1F4CA; 7-day rhythm</h2>
@@ -764,6 +777,12 @@
       <p class="muted">This feeling is temporary. It will pass — let's ride it out together.</p>
     </div>
 
+    <div class="card center">
+      <h2>&#x1F3AC; Play the tape forward</h2>
+      <p class="muted" style="margin-bottom:0;">Before you decide anything, watch tonight play out — both versions of it, honestly, in about a minute.</p>
+      <button id="tapeOpen" class="mt12">Play the tape forward</button>
+    </div>
+
     <div class="card">
       <h2>&#x1F4DE; My people</h2>
       <div id="sosContactsList"></div>
@@ -1086,6 +1105,32 @@
     <div id="chipGallery"></div>
     <div class="row mt12" style="justify-content:center;">
       <button id="chipClose" class="small ghost">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- STORY OVERLAY -->
+<div id="storyOverlay" class="overlay hidden">
+  <div class="sheet" style="text-align:left;">
+    <h2 class="center">&#x1F4D6; Your story so far</h2>
+    <div id="storyBody"></div>
+    <div class="row mt12" style="justify-content:center;">
+      <button id="storyDownload" class="small">Download story card</button>
+      <button id="storyCopy" class="small ghost">Copy summary</button>
+      <button id="storyClose" class="small ghost">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- PLAY THE TAPE OVERLAY -->
+<div id="tapeOverlay" class="overlay hidden">
+  <div class="sheet" style="text-align:left;">
+    <div id="tapeBody"></div>
+    <div class="tapedots" id="tapeDots"></div>
+    <div class="row mt12" style="justify-content:space-between;">
+      <button id="tapeBack" class="small ghost">Back</button>
+      <button id="tapeClose" class="small ghost">Close</button>
+      <button id="tapeNext" class="small">Next</button>
     </div>
   </div>
 </div>
@@ -1432,6 +1477,354 @@ $("chipGallery").addEventListener("click", function(e){
     }
     t = t.parentNode;
   }
+});
+
+/* ============ YOUR STORY SO FAR ============ */
+let storyTimers = [];
+function buildStoryEvents(){
+  const evs = [];
+  if(!state.soberDate) return evs;
+  const startMs = new Date(state.soberDate).getTime();
+  const d = daysElapsed();
+  function push(t, ico, title, sub){
+    evs.push({t:t, ico:ico, title:title, sub:sub || "", dateStr:fmtDate(localKey(new Date(t)))});
+  }
+  function ord(n){
+    const s = ["th","st","nd","rd"], v = n % 100;
+    return n + (s[(v - 20) % 10] || s[v] || s[0]);
+  }
+  /* day one */
+  push(startMs, "\uD83C\uDF05", "You started", "Day one \u2014 the decision that changed everything.");
+  /* earned chips (dates derived exactly: start + chip threshold, same as chipDateEarned) */
+  CHIPS.forEach(function(c){
+    if(chipEarned(c)){
+      push(startMs + c.d * 86400000, "\uD83C\uDFC5",
+        c.name + " \u2014 " + c.label.charAt(0) + c.label.slice(1).toLowerCase(), c.line);
+    }
+  });
+  /* meetings: first, then the badge thresholds */
+  const mtgs = state.meetings.slice().sort(function(a,b){ return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0); });
+  if(mtgs.length){
+    push(keyToDate(mtgs[0].date).getTime(), "\uD83E\uDD1D", "First meeting", mtgs[0].name || "");
+    [10, 30, 90].forEach(function(n){
+      if(mtgs.length >= n) push(keyToDate(mtgs[n - 1].date).getTime(), "\uD83E\uDD1D", ord(n) + " meeting", mtgs[n - 1].name || "");
+    });
+  }
+  /* fitness: first activity, then cumulative distance crossings */
+  const acts = state.activities.slice().sort(function(a,b){
+    if(a.date !== b.date) return a.date < b.date ? -1 : 1;
+    return (a.ts || 0) - (b.ts || 0);
+  });
+  if(acts.length){
+    const a0 = acts[0];
+    push(keyToDate(a0.date).getTime(), FIT_ICONS[a0.type] || "\u2B50", "First activity logged",
+      a0.type + (a0.distMi > 0 ? " \u2022 " + fmtDist(a0.distMi) : ""));
+  }
+  let cum = 0, markIdx = 0;
+  const distMarks = [10, 26.2, 50, 100, 250, 500, 1000];
+  acts.forEach(function(a){
+    cum += (a.distMi || 0);
+    while(markIdx < distMarks.length && cum >= distMarks[markIdx]){
+      push(keyToDate(a.date).getTime(), "\uD83D\uDEE3\uFE0F", fmtDist(distMarks[markIdx]) + " covered",
+        "Total distance across every activity you've logged.");
+      markIdx++;
+    }
+  });
+  /* smoke-free */
+  const sm = state.smoke || {};
+  if(sm.mode === "quit" && sm.quitDate){
+    push(new Date(sm.quitDate).getTime(), "\uD83D\uDEAD", "Went smoke-free", "Day one without cigarettes.");
+  } else if(sm.mode === "cutting" && sm.cigLogs){
+    const ckeys = Object.keys(sm.cigLogs).sort();
+    if(ckeys.length) push(keyToDate(ckeys[0]).getTime(), "\u2702\uFE0F", "Started cutting down", "The first day of your cut-down log.");
+  }
+  /* money: crossing dates are exact while savings grow at dailySpend per day */
+  const spend = +state.dailySpend || 0;
+  let moneyShown = false;
+  if(spend > 0){
+    [100, 500, 1000].forEach(function(T){
+      const k = Math.ceil(T / spend);
+      if(d >= k){
+        push(startMs + k * 86400000, "\uD83D\uDCB0", money(T) + " saved", "Money that stayed in your pocket.");
+        moneyShown = true;
+      }
+    });
+  }
+  evs.sort(function(a,b){ return a.t - b.t; });
+  const totalSaved = d * spend;
+  if(!moneyShown && totalSaved > 0){
+    evs.push({t:Date.now(), ico:"\uD83D\uDCB0", title:money(totalSaved) + " saved so far",
+      sub:"On the way to " + money(100) + ".", dateStr:fmtDate(todayKey())});
+  }
+  evs.push({t:Date.now(), ico:"\uD83C\uDF1F", title:"Today \u2014 day " + (d + 1) + ", still going",
+    sub:"The story's still being written.", dateStr:fmtDate(todayKey())});
+  return evs;
+}
+function renderStoryCard(){
+  const sum = $("storySummary");
+  if(!sum) return;
+  if(!state.soberDate){
+    sum.textContent = "Set your sober date in Settings and your story starts writing itself \u2014 day one, chips, meetings, miles and all.";
+    return;
+  }
+  sum.textContent = "Day " + (daysElapsed() + 1) + " of your story \u2014 " + CHIPS.filter(chipEarned).length +
+    " chips earned, " + state.meetings.length + (state.meetings.length === 1 ? " meeting" : " meetings") + ", " +
+    state.activities.length + (state.activities.length === 1 ? " activity" : " activities") + " logged. Play it back.";
+}
+function renderStoryBody(){
+  const body = $("storyBody");
+  if(!state.soberDate){
+    $("storyDownload").disabled = true;
+    $("storyCopy").disabled = true;
+    body.innerHTML = '<p class="muted">Your story starts with a date. Set your sobriety start date in <strong>Settings</strong>, and this page will tell it back to you \u2014 day one, chips, meetings, miles and all.</p>';
+    return;
+  }
+  $("storyDownload").disabled = false;
+  $("storyCopy").disabled = false;
+  const evs = buildStoryEvents();
+  let html = '<div class="tl">';
+  evs.forEach(function(ev){
+    html += '<div class="tlitem hit stitem"><div class="t">' + ev.ico + " " + esc(ev.title) + '</div>' +
+      '<div class="muted">' + esc(ev.dateStr) + (ev.sub ? " \u2014 " + esc(ev.sub) : "") + "</div></div>";
+  });
+  html += "</div>";
+  body.innerHTML = html;
+  storyTimers.forEach(clearTimeout);
+  storyTimers = [];
+  const items = body.querySelectorAll(".stitem");
+  if(state.reduceMotion){
+    items.forEach(function(it){ it.classList.add("in"); });
+  } else {
+    items.forEach(function(it, i){
+      storyTimers.push(setTimeout(function(){ it.classList.add("in"); }, 150 + i * 280));
+    });
+  }
+}
+function openStory(){
+  renderStoryBody();
+  $("storyOverlay").classList.remove("hidden");
+}
+function closeStory(){
+  storyTimers.forEach(clearTimeout);
+  storyTimers = [];
+  $("storyOverlay").classList.add("hidden");
+}
+$("storyOpen").addEventListener("click", openStory);
+$("storyClose").addEventListener("click", closeStory);
+function storyStats(){
+  const d = daysElapsed();
+  return {
+    days:d,
+    saved:d * (+state.dailySpend || 0),
+    chips:CHIPS.filter(chipEarned).length,
+    meetings:state.meetings.length,
+    activities:state.activities.length
+  };
+}
+function storySummaryText(){
+  const s = storyStats();
+  return "My story so far: " + s.days + (s.days === 1 ? " day" : " days") + " sober, " + money(s.saved) + " saved, " +
+    s.chips + " of " + CHIPS.length + " chips earned, " + s.meetings + (s.meetings === 1 ? " meeting" : " meetings") +
+    " attended, " + s.activities + (s.activities === 1 ? " activity" : " activities") +
+    " logged. Soberforever \u2014 one day at a time.";
+}
+$("storyCopy").addEventListener("click", function(){
+  const text = storySummaryText();
+  function done(){ $("storyCopy").textContent = "Copied!"; setTimeout(function(){ $("storyCopy").textContent = "Copy summary"; }, 1500); }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done, function(){ fallback(); });
+  } else { fallback(); }
+  function fallback(){
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try{ document.execCommand("copy"); }catch(e){}
+    document.body.removeChild(ta); done();
+  }
+});
+$("storyDownload").addEventListener("click", function(){
+  const THEMES = {
+    dark:    {bg1:"#0f172a", bg2:"#1c2942", a1:"#f59e0b", a2:"#38bdf8", text:"#f1f5f9", muted:"#94a3b8"},
+    sunrise: {bg1:"#fff7ed", bg2:"#ffedd5", a1:"#ea580c", a2:"#d97706", text:"#431407", muted:"#b45309"},
+    ocean:   {bg1:"#ecfeff", bg2:"#cffafe", a1:"#0891b2", a2:"#0284c7", text:"#083344", muted:"#0e7490"}
+  };
+  const th = THEMES[state.theme] || THEMES.dark;
+  const s = storyStats();
+  const S = 1080;
+  const cv = document.createElement("canvas");
+  cv.width = S; cv.height = S;
+  const x = cv.getContext("2d");
+  const g = x.createLinearGradient(0, 0, S, S);
+  g.addColorStop(0, th.bg1); g.addColorStop(1, th.bg2);
+  x.fillStyle = g; x.fillRect(0, 0, S, S);
+  x.strokeStyle = th.a1; x.lineWidth = 8;
+  x.beginPath(); x.arc(S/2, S/2, 430, 0, Math.PI*2); x.stroke();
+  x.textAlign = "center";
+  x.font = "92px sans-serif";
+  x.fillText("\uD83D\uDCD6", S/2, 215);
+  x.fillStyle = th.text;
+  x.font = "800 96px sans-serif";
+  x.fillText("MY STORY SO FAR", S/2, 360);
+  x.font = "54px sans-serif";
+  const lines = [
+    s.days + (s.days === 1 ? " day sober" : " days sober"),
+    money(s.saved) + " saved",
+    s.chips + " of " + CHIPS.length + " chips earned",
+    s.meetings + (s.meetings === 1 ? " meeting attended" : " meetings attended"),
+    s.activities + (s.activities === 1 ? " activity logged" : " activities logged")
+  ];
+  let y = 470;
+  lines.forEach(function(l){ x.fillText(l, S/2, y); y += 78; });
+  x.strokeStyle = th.a1; x.lineWidth = 4;
+  x.beginPath(); x.moveTo(S/2 - 150, y + 20); x.lineTo(S/2 + 150, y + 20); x.stroke();
+  x.fillStyle = th.a1;
+  x.font = "700 58px sans-serif";
+  x.fillText("SOBERFOREVER", S/2, y + 85);
+  x.fillStyle = th.muted;
+  x.font = "italic 44px sans-serif";
+  x.fillText("one day at a time", S/2, y + 145);
+  function done(blob){
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "soberforever-story.png";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 2000);
+  }
+  if(cv.toBlob){ cv.toBlob(function(b){ if(b) done(b); }, "image/png"); }
+  else {
+    const raw = atob(cv.toDataURL("image/png").split(",")[1]);
+    const arr = new Uint8Array(raw.length);
+    for(let i=0;i<raw.length;i++) arr[i] = raw.charCodeAt(i);
+    done(new Blob([arr], {type:"image/png"}));
+  }
+});
+
+/* ============ PLAY THE TAPE FORWARD ============ */
+let tapeIdx = 0;
+let tapeSteps = null;
+function buildTapeSteps(){
+  const d = daysElapsed();
+  const spend = +state.dailySpend || 0;
+  const total = d * spend;
+  const steps = [];
+  steps.push({
+    title:"Right now",
+    html:"<p>A craving is loud right now. That's all this is \u2014 a craving doing what cravings do.</p>" +
+      "<p>Here's the part worth remembering: cravings peak and pass, usually within about 20 minutes, whether you drink or not. The feeling is temporary. The choice isn't.</p>" +
+      "<p>From this exact moment, tonight branches two ways. Let's watch both \u2014 honestly.</p>"
+  });
+  let drink = "";
+  if(spend > 0){
+    drink += "<p>The first one rarely travels alone. A night of drinking used to run you about <strong>" + money(spend) + "</strong> \u2014 spent by morning, with nothing to show for it.</p>";
+  } else {
+    drink += "<p>The first one rarely travels alone. One drink has a way of becoming the whole night.</p>";
+  }
+  drink += "<p>Sleep tonight would be the restless kind. Alcohol knocks you out, but it wrecks the deep sleep that actually restores you \u2014 so you'd wake up tired no matter how long you were out.</p>";
+  drink += "<p>The morning routine, the walk, the clear start \u2014 tonight's decision reaches all of them.</p>";
+  if(state.soberDate && d > 0){
+    drink += "<p>And the counter goes back to zero: " + d + (d === 1 ? " day" : " days") + " of momentum, traded for one night.</p>";
+  }
+  steps.push({title:"Tonight, if you drink", html:drink});
+  let clean = "<p>The urge fades on its own \u2014 it always has. Give it about 20 minutes and this feeling is mostly gone, and all you had to do was wait it out.</p>" +
+    "<p>The evening stays yours: a real dinner, a calm night, and bed when you're actually tired.</p>";
+  if(state.soberDate){
+    clean += "<p>Your streak, your chips, and everything you've built stay exactly where you left them" +
+      (total > 0 ? " \u2014 and the " + money(total) + " you've already saved keeps growing" : "") + ".</p>";
+  }
+  steps.push({title:"Tonight, if you don't", html:clean});
+  steps.push({
+    title:"Tomorrow, 6 AM",
+    html:'<div class="grid2">' +
+      '<div class="item"><div style="font-weight:700;">\uD83C\uDF27\uFE0F If you drank</div>' +
+      '<p class="muted" style="margin-bottom:0;">The alarm feels like a hammer. Mouth dry, head heavy, anxiety turned up. The walk doesn\'t happen. Coffee is damage control. And day one starts over.</p></div>' +
+      '<div class="item"><div style="font-weight:700;">\u2600\uFE0F If you didn\'t</div>' +
+      '<p class="muted" style="margin-bottom:0;">You wake up clear-headed. The walk happens. Coffee is just coffee.' +
+      (state.soberDate ? " It's day " + (d + 2) + ", the streak is alive, and last night is already just a craving you beat." : " Another sober day is in the bank, and last night is just a craving you beat.") +
+      "</p></div></div>"
+  });
+  let words = "";
+  let reasonText = "";
+  if(state.reasons && state.reasons.length){
+    reasonText = state.reasons[(Math.random() * state.reasons.length) | 0].text;
+  } else if(state.reason){ reasonText = state.reason; }
+  if(reasonText){
+    words += '<div class="item"><div class="meta">In your own words</div><div style="font-size:1.05rem;">\u201C' + esc(reasonText) + "\u201D</div></div>";
+  }
+  if(state.soberDate){
+    const nx = CHIPS.filter(function(c){ return !chipEarned(c); })[0];
+    let line = "You're on day " + (d + 1) + ".";
+    if(nx){
+      const togo = nx.d - d;
+      line += " Your " + nx.name.toLowerCase() + " (" + nx.label.charAt(0) + nx.label.slice(1).toLowerCase() + ") is " +
+        togo + (togo === 1 ? " day" : " days") + " away.";
+    } else {
+      line += " You've earned every chip in the set.";
+    }
+    words += "<p>" + esc(line) + "</p>";
+  }
+  if(state.wins && state.wins.length){
+    const w = state.wins[state.wins.length - 1];
+    words += '<div class="item"><div class="meta">A recent win \u2022 ' + esc(fmtDate(w.date)) + "</div><div>" + esc(w.text) + "</div></div>";
+  }
+  if(!words){
+    words = "<p>You started this for a reason. Whatever it was on day one, it's still true tonight.</p>";
+  }
+  steps.push({title:"Your own words", html:words});
+  steps.push({
+    title:"Which tomorrow do you want?",
+    html:"<p>You've seen both versions now. Only one of them is the morning you actually want.</p>" +
+      '<button id="tapeStay" style="width:100%;">I\'m staying sober tonight</button>' +
+      '<button id="tapeHelp" class="ghost mt8" style="width:100%;">I still need help</button>'
+  });
+  return steps;
+}
+function renderTapeStep(){
+  const s = tapeSteps[tapeIdx];
+  $("tapeBody").innerHTML = '<div class="tapein"><p class="muted" style="margin:0 0 4px;">Step ' + (tapeIdx + 1) + " of " + tapeSteps.length + "</p>" +
+    "<h2>" + esc(s.title) + "</h2>" + s.html + "</div>";
+  let dots = "";
+  for(let i = 0; i < tapeSteps.length; i++) dots += "<span" + (i === tapeIdx ? ' class="on"' : "") + "></span>";
+  $("tapeDots").innerHTML = dots;
+  $("tapeBack").classList.remove("hidden");
+  $("tapeBack").disabled = tapeIdx === 0;
+  $("tapeNext").classList.toggle("hidden", tapeIdx === tapeSteps.length - 1);
+}
+function showTapeDone(){
+  $("tapeBody").innerHTML = '<div class="tapein center"><div style="font-size:3rem;">\uD83D\uDC9B</div>' +
+    "<h2>That's the choice.</h2>" +
+    '<p class="muted">Good call. The craving will pass \u2014 they always do \u2014 and tomorrow morning you\'ll be glad it was you who decided.</p>' +
+    "<p>One day at a time. Tonight counts.</p></div>";
+  $("tapeDots").innerHTML = "";
+  $("tapeBack").classList.add("hidden");
+  $("tapeNext").classList.add("hidden");
+}
+function openTape(){
+  tapeSteps = buildTapeSteps();
+  tapeIdx = 0;
+  renderTapeStep();
+  $("tapeOverlay").classList.remove("hidden");
+}
+function closeTape(){
+  $("tapeOverlay").classList.add("hidden");
+}
+$("tapeOpen").addEventListener("click", openTape);
+$("tapeClose").addEventListener("click", closeTape);
+$("tapeBack").addEventListener("click", function(){ if(tapeIdx > 0){ tapeIdx--; renderTapeStep(); } });
+$("tapeNext").addEventListener("click", function(){ if(tapeSteps && tapeIdx < tapeSteps.length - 1){ tapeIdx++; renderTapeStep(); } });
+$("tapeBody").addEventListener("click", function(e){
+  const t = e.target;
+  if(!t || !t.id) return;
+  if(t.id === "tapeStay"){ launchConfetti(3200); showTapeDone(); }
+  else if(t.id === "tapeHelp"){
+    closeTape();
+    const el = $("breathCircle");
+    if(el && el.scrollIntoView) el.scrollIntoView({behavior:state.reduceMotion ? "auto" : "smooth", block:"center"});
+  }
+});
+document.addEventListener("keydown", function(e){
+  if(e.key !== "Escape") return;
+  if(!$("storyOverlay").classList.contains("hidden")) closeStory();
+  else if(!$("tapeOverlay").classList.contains("hidden")) closeTape();
 });
 
 /* ============ CONFETTI ============ */
@@ -3625,6 +4018,7 @@ function renderAll(){
   renderHero();
   renderMilestones();
   renderChips();
+  renderStoryCard();
   renderPledge();
   renderCountdown();
   renderCheckin();
