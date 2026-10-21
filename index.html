@@ -6,6 +6,13 @@
 <title>Soberforever</title>
 <meta name="description" content="A private sobriety tracker. Your data stays in your own browser.">
 <meta name="theme-color" content="#0f172a">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Soberforever">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" href="icon-192.png" type="image/png">
 <style>
   :root, [data-theme="dark"]{
     --bg:#0f172a; --bg2:#16213a; --card:#1c2942; --text:#f1f5f9; --muted:#94a3b8;
@@ -255,6 +262,8 @@
 <header class="top">
   <h1>&#x1F305; Soberforever</h1>
   <p>One day at a time.</p>
+  <button id="sfInstallBtn" class="ghost" style="display:none;margin-top:8px">&#x1F4F2; Install Soberforever on this device</button>
+  <div id="sfUpdateBanner" style="display:none;margin:10px auto 0;max-width:520px;background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff;padding:12px 14px;border-radius:12px"><b>Update available!</b> A new version of Soberforever is ready. <button id="sfUpdateNowBtn" style="background:#fff;color:#7c2d12;margin-left:8px;box-shadow:none">Tap to update</button></div>
 </header>
 
 <!-- ONBOARDING -->
@@ -929,6 +938,12 @@
 
   <!-- SETTINGS -->
   <section id="tab-settings" class="hidden">
+    <div class="card">
+      <h2>&#x1F4F2; App updates</h2>
+      <p class="muted">You are running <strong>Soberforever v<span id="sfVerSetup">1.0</span></strong>. Updates download automatically in the background — when one is ready, a banner appears at the top of the app and one tap applies it. Updates never touch your saved data.</p>
+      <button id="sfCheckBtn" class="small ghost">Check for updates</button>
+      <p class="small" id="sfUpdStatus"></p>
+    </div>
     <div class="card">
       <h2>&#x2699;&#xFE0F; Settings</h2>
       <label class="lbl" for="setDate">Sobriety start date &amp; time</label>
@@ -4057,6 +4072,43 @@ setInterval(function(){
   renderSmokeTick();
 }, 1000);
 setInterval(function(){ checkMilestones(); checkChips(); checkLetters(); checkFitnessBadges(); checkSmokeBadges(); }, 60000);
+</script>
+<script>
+// PWA (v1.0): offline service worker + install prompt + tap-to-apply updates.
+// Added 2026-10-20. Self-contained: does not modify the main app script.
+const SF_APP_VERSION='1.0';
+let sfReg=null, sfWaiting=null, sfReloading=false, sfPrompt=null;
+function sfShowBanner(){var b=document.getElementById('sfUpdateBanner'); if(b)b.style.display='block';}
+if('serviceWorker' in navigator){
+ window.addEventListener('load',function(){
+  navigator.serviceWorker.register('./sw.js').then(function(reg){
+   sfReg=reg;
+   if(reg.waiting&&navigator.serviceWorker.controller){sfWaiting=reg.waiting;sfShowBanner();}
+   reg.addEventListener('updatefound',function(){
+    const nw=reg.installing; if(!nw)return;
+    nw.addEventListener('statechange',function(){if(nw.state==='installed'&&navigator.serviceWorker.controller){sfWaiting=nw;sfShowBanner();}});
+   });
+  }).catch(function(){});
+  navigator.serviceWorker.addEventListener('controllerchange',function(){if(sfReloading)return;sfReloading=true;location.reload();});
+ });
+}
+window.addEventListener('beforeinstallprompt',function(e){e.preventDefault();sfPrompt=e;var b=document.getElementById('sfInstallBtn'); if(b)b.style.display='inline-block';});
+document.addEventListener('DOMContentLoaded',function(){
+ var ib=document.getElementById('sfInstallBtn');
+ if(ib)ib.addEventListener('click',function(){if(sfPrompt){sfPrompt.prompt();sfPrompt.userChoice.then(function(){sfPrompt=null;ib.style.display='none';});}});
+ var ub=document.getElementById('sfUpdateNowBtn');
+ if(ub)ub.addEventListener('click',function(){if(sfWaiting){sfWaiting.postMessage({type:'SKIP_WAITING'});}else{location.reload();}});
+ var cb=document.getElementById('sfCheckBtn');
+ if(cb)cb.addEventListener('click',function(){
+  var st=document.getElementById('sfUpdStatus');
+  if(!sfReg){st.textContent='Update checker is not available in this browser view — open the installed app and try again.';return;}
+  st.textContent='Checking\u2026';
+  sfReg.update().then(function(){setTimeout(function(){
+   if(sfWaiting||sfReg.waiting){sfWaiting=sfReg.waiting;sfShowBanner();st.textContent='Update found — tap the banner at the top of the app to apply it.';}
+   else st.textContent='You are on the latest version (v'+SF_APP_VERSION+').';
+  },600);}).catch(function(){st.textContent='Could not check right now — you may be offline. Updates also arrive automatically.';});
+ });
+});
 </script>
 </body>
 </html>
