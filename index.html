@@ -403,7 +403,8 @@
     <div class="card">
       <h2>&#x1F49B; Tough days &amp; recommitments</h2>
       <p class="muted" style="margin-top:0;">Logged with honesty. Every one of these is proof you came back.</p>
-      <div id="slipList"></div>
+      <button id="slipLogOpen" class="small">Log a tough day</button>
+      <div id="slipList" class="mt12"></div>
     </div>
 
     <div class="card">
@@ -448,6 +449,12 @@
     <div class="card">
       <h2>&#x1F50D; Craving patterns</h2>
       <div id="patternBars"></div>
+      <div style="border-top:1px solid var(--line); margin-top:12px; padding-top:10px;">
+        <label class="lbl">Craving spark right now? Tag what set it off</label>
+        <div class="chips" id="patternTags"></div>
+        <button id="patternLog" class="small mt8">Log craving spark</button>
+        <p class="muted mt8" id="patternMsg" style="margin-bottom:0;">Saved to today's check-in — this is what builds the patterns above.</p>
+      </div>
     </div>
 
     <div class="card">
@@ -1092,6 +1099,8 @@
     <div id="slipForm">
       <h2 class="center">A tough day &#x1F49B;</h2>
       <p class="muted center">That took honesty to log. If it helps, walk through it — no judgment here, just reflection.</p>
+      <label class="lbl" for="slipDate">Date</label>
+      <input type="date" id="slipDate">
       <label class="lbl" for="slipWhat">What happened?</label>
       <textarea id="slipWhat" placeholder="Just the honest version..."></textarea>
       <label class="lbl">What sparked it? (optional)</label>
@@ -2469,6 +2478,36 @@ function renderPatterns(){
   html += '<p class="muted mt8" style="margin-bottom:0;">From your check-ins over the last 30 days. Knowing your triggers is half the battle.</p>';
   el.innerHTML = html;
 }
+let patternSel = [];
+function renderPatternTags(){
+  const el = $("patternTags");
+  if(!el) return;
+  el.innerHTML = "";
+  TRIGGERS.forEach(function(t){
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = t;
+    if(patternSel.indexOf(t) !== -1) b.classList.add("on");
+    b.addEventListener("click", function(){
+      const i = patternSel.indexOf(t);
+      if(i === -1) patternSel.push(t); else patternSel.splice(i,1);
+      b.classList.toggle("on");
+    });
+    el.appendChild(b);
+  });
+}
+$("patternLog").addEventListener("click", function(){
+  const msg = $("patternMsg");
+  if(!patternSel.length){ msg.textContent = "Pick at least one tag first — what set it off?"; return; }
+  const k = todayKey();
+  let c = state.checkins[k];
+  if(!c){ c = { status:"sober", mood:3, craving:1, note:"", triggers:[] }; state.checkins[k] = c; }
+  if(!c.triggers) c.triggers = [];
+  patternSel.forEach(function(t){ if(c.triggers.indexOf(t) === -1) c.triggers.push(t); });
+  saveState();
+  patternSel = [];
+  renderPatternTags(); renderPatterns(); renderCheckin();
+  msg.textContent = "Logged to today's check-in. Catching the spark is half the battle.";
+});
 
 /* ============ WEIGHT TRACKER ============ */
 function weightUnit(){ return state.weightUnit === "kg" ? "kg" : "lbs"; }
@@ -2875,19 +2914,22 @@ function renderSlips(){
     acts.appendChild(del); div.appendChild(acts); el.appendChild(div);
   });
 }
-$("recommitOpen").addEventListener("click", function(){
+function openSlipForm(){
   slipTriggers = [];
   renderSlipTriggerTags();
+  $("slipDate").value = todayKey();
   $("slipWhat").value = ""; $("slipDiff").value = ""; $("slipKind").value = "";
   $("slipForm").classList.remove("hidden");
   $("slipDoneWrap").classList.add("hidden");
   $("recommitOverlay").classList.remove("hidden");
-});
+}
+$("recommitOpen").addEventListener("click", openSlipForm);
+$("slipLogOpen").addEventListener("click", openSlipForm);
 $("recommitDismiss").addEventListener("click", function(){ $("recommitOffer").classList.add("hidden"); });
 $("slipCancel").addEventListener("click", function(){ $("recommitOverlay").classList.add("hidden"); });
 $("slipSave").addEventListener("click", function(){
   state.slips.push({
-    id:uid(), date:todayKey(),
+    id:uid(), date:$("slipDate").value || todayKey(),
     what:$("slipWhat").value.trim(), triggers:slipTriggers.slice(),
     diff:$("slipDiff").value.trim(), kind:$("slipKind").value.trim()
   });
@@ -4048,6 +4090,7 @@ function renderAll(){
   renderFitness();
   renderSmoke();
   renderPatterns();
+  renderPatternTags();
   renderWeight();
   renderSleep();
   renderHabits();
@@ -4076,7 +4119,7 @@ setInterval(function(){ checkMilestones(); checkChips(); checkLetters(); checkFi
 <script>
 // PWA (v1.0): offline service worker + install prompt + tap-to-apply updates.
 // Added 2026-10-20. Self-contained: does not modify the main app script.
-const SF_APP_VERSION='1.0';
+const SF_APP_VERSION='1.1';
 let sfReg=null, sfWaiting=null, sfReloading=false, sfPrompt=null;
 function sfShowBanner(){var b=document.getElementById('sfUpdateBanner'); if(b)b.style.display='block';}
 if('serviceWorker' in navigator){
