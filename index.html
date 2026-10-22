@@ -247,6 +247,13 @@
   .tapedots span.on{background:var(--accent);}
   @keyframes fadeUp{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;}}
   .tapein{animation:fadeUp .3s ease;}
+  /* voice notes + proof photos */
+  .evgrid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px;}
+  .evgrid > button{padding:0; background:var(--bg2); border:1px solid var(--line); box-shadow:none;
+    border-radius:10px; overflow:hidden; line-height:0;}
+  .evgrid > button img{width:100%; height:88px; object-fit:cover; display:block;}
+  .evbig{width:100%; border-radius:12px; display:block; border:1px solid var(--line);}
+  .rectime{font-variant-numeric:tabular-nums; font-weight:700; color:var(--warn);}
   @media print{
     body{padding-bottom:0;}
     body > *:not(#reportOverlay){display:none !important;}
@@ -392,6 +399,35 @@
       <h2>&#x1F4D6; Your story so far</h2>
       <p class="muted" style="margin-top:0;" id="storySummary">Your journey, told back to you — the day you started, the chips, the meetings, the miles.</p>
       <button id="storyOpen" class="small mt8">Play my story</button>
+    </div>
+
+    <div class="card">
+      <h2>&#x1F399;&#xFE0F; Messages from sober you</h2>
+      <p class="muted" style="margin-top:0;">Record a note on a good day. Future you, mid-craving, needs to hear it.</p>
+      <div id="voiceNotesList"></div>
+      <label class="lbl" for="voiceLabel">Label for the next note (optional)</label>
+      <input id="voiceLabel" placeholder="e.g. For a rough night" maxlength="60">
+      <div class="row mt8">
+        <button id="voiceRecBtn" class="small">&#x1F534; Record</button>
+        <button id="voiceStopBtn" class="small danger hidden">Stop</button>
+        <span class="rectime" id="voiceRecTime"></span>
+      </div>
+      <p class="muted mt8" id="voiceMsg" style="margin-bottom:0;"></p>
+      <p class="muted mt8" style="margin-bottom:0;">Voice notes live in this browser only — they aren't part of the JSON backup in Settings, so they won't move to a new phone.</p>
+    </div>
+
+    <div class="card">
+      <h2>&#x1F4F8; Proof it's working</h2>
+      <p class="muted" style="margin-top:0;">Photos that prove it's working — the scale, a clear-eyed morning, a good day with people you love. Open it when a craving says nothing's changed.</p>
+      <div id="evidenceGrid" class="evgrid"></div>
+      <label class="lbl" for="evidenceCaption">Caption for the next photo (optional)</label>
+      <input id="evidenceCaption" placeholder="e.g. Morning walk, feeling clear" maxlength="80">
+      <div class="row mt8">
+        <button id="evidenceAddBtn" class="small">Add a photo</button>
+        <input type="file" id="evidenceFile" accept="image/*" class="hidden">
+      </div>
+      <p class="muted mt8" id="evidenceMsg" style="margin-bottom:0;"></p>
+      <p class="muted mt8" style="margin-bottom:0;">Photos live in this browser only — they aren't part of the JSON backup in Settings, so they won't move to a new phone.</p>
     </div>
 
     <div class="card">
@@ -799,6 +835,16 @@
       <button id="tapeOpen" class="mt12">Play the tape forward</button>
     </div>
 
+    <div class="card center">
+      <h2>&#x1F49B; From you, to you</h2>
+      <p class="muted" style="margin-bottom:0;">Hear your own voice from a good day — or look at the proof that this is working.</p>
+      <div class="row mt12" style="justify-content:center;">
+        <button id="sosVoiceBtn" class="small">&#x1F399;&#xFE0F; Hear from sober you</button>
+        <button id="sosProofBtn" class="small ghost">&#x1F4F8; See your proof</button>
+      </div>
+      <p class="muted mt8" id="sosMediaMsg" style="margin-bottom:0;"></p>
+    </div>
+
     <div class="card">
       <h2>&#x1F4DE; My people</h2>
       <div id="sosContactsList"></div>
@@ -1172,6 +1218,21 @@
   </div>
 </div>
 
+<!-- PROOF PHOTO OVERLAY -->
+<div id="photoOverlay" class="overlay hidden">
+  <div class="sheet" style="text-align:left;">
+    <div id="photoView"></div>
+    <div class="row mt12" style="justify-content:space-between;">
+      <button id="photoPrev" class="small ghost">Prev</button>
+      <button id="photoDelete" class="small danger">Delete photo</button>
+      <button id="photoNext" class="small ghost">Next</button>
+    </div>
+    <div class="row mt8" style="justify-content:center;">
+      <button id="photoClose" class="small ghost">Close</button>
+    </div>
+  </div>
+</div>
+
 <canvas id="confettiCanvas"></canvas>
 
 <script>
@@ -1197,6 +1258,7 @@ function defaultState(){
     sleepLog:{}, habits:[], gratitude:[],
     sosContacts:[], water:{},
     slips:[], futureLetters:[], promptIdx:0, reduceMotion:null, textSize:"normal",
+    voiceNotes:[], evidence:[],
     activities:[], fitnessGoals:{daysPerWeek:0,distPerWeek:0}, distUnit:"mi",
     smoke:defaultSmoke()
   };
@@ -1213,6 +1275,65 @@ function loadState(){
 function saveState(){
   try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }
   catch(e){ /* storage unavailable — app still runs */ }
+}
+
+/* ============ MEDIA STORE (IndexedDB) ============
+   Binary media (voice notes, proof photos) lives here, NOT in localStorage,
+   so it can never crowd out the app's own data. Only metadata lives in state. */
+const MEDIA_DB = "soberforever-media";
+let mediaDbPromise = null;
+function mediaSupported(){ return typeof indexedDB !== "undefined"; }
+function mediaDb(){
+  if(!mediaSupported()) return Promise.reject(new Error("IndexedDB unavailable"));
+  if(mediaDbPromise) return mediaDbPromise;
+  mediaDbPromise = new Promise(function(resolve, reject){
+    let req;
+    try{ req = indexedDB.open(MEDIA_DB, 1); }catch(e){ reject(e); return; }
+    req.onupgradeneeded = function(){
+      const db = req.result;
+      if(!db.objectStoreNames.contains("audio")) db.createObjectStore("audio");
+      if(!db.objectStoreNames.contains("photos")) db.createObjectStore("photos");
+    };
+    req.onsuccess = function(){ resolve(req.result); };
+    req.onerror = function(){ reject(req.error); };
+  });
+  mediaDbPromise.catch(function(){ mediaDbPromise = null; });
+  return mediaDbPromise;
+}
+function mediaPut(store, id, blob){
+  return mediaDb().then(function(db){
+    return new Promise(function(resolve, reject){
+      let tx;
+      try{ tx = db.transaction(store, "readwrite"); }catch(e){ reject(e); return; }
+      tx.objectStore(store).put(blob, id);
+      tx.oncomplete = function(){ resolve(); };
+      tx.onerror = function(){ reject(tx.error); };
+      tx.onabort = function(){ reject(tx.error); };
+    });
+  });
+}
+function mediaGet(store, id){
+  return mediaDb().then(function(db){
+    return new Promise(function(resolve, reject){
+      let req;
+      try{ req = db.transaction(store, "readonly").objectStore(store).get(id); }
+      catch(e){ reject(e); return; }
+      req.onsuccess = function(){ resolve(req.result || null); };
+      req.onerror = function(){ reject(req.error); };
+    });
+  });
+}
+function mediaDelete(store, id){
+  return mediaDb().then(function(db){
+    return new Promise(function(resolve, reject){
+      let tx;
+      try{ tx = db.transaction(store, "readwrite"); }catch(e){ reject(e); return; }
+      tx.objectStore(store).delete(id);
+      tx.oncomplete = function(){ resolve(); };
+      tx.onerror = function(){ reject(tx.error); };
+      tx.onabort = function(){ reject(tx.error); };
+    });
+  });
 }
 let state = loadState();
 if(state.reduceMotion === null || state.reduceMotion === undefined){
@@ -1849,6 +1970,345 @@ document.addEventListener("keydown", function(e){
   if(e.key !== "Escape") return;
   if(!$("storyOverlay").classList.contains("hidden")) closeStory();
   else if(!$("tapeOverlay").classList.contains("hidden")) closeTape();
+  else if(!$("photoOverlay").classList.contains("hidden")) closePhoto();
+});
+
+/* ============ SOS MEDIA (shared status line) ============ */
+function renderSosMedia(){
+  const msg = $("sosMediaMsg");
+  if(!msg) return;
+  if(voicePlayingId){
+    msg.textContent = "Playing a message from sober you\u2026 tap \u201CHear from sober you\u201D again to stop it.";
+    return;
+  }
+  const vn = state.voiceNotes.length, ev = state.evidence.length;
+  if(!vn && !ev){
+    msg.textContent = "Nothing here yet \u2014 on a good day, record a voice note or add a proof photo on the Journey tab. Future you will be glad you did.";
+    return;
+  }
+  const parts = [];
+  if(vn) parts.push(vn + (vn === 1 ? " voice note" : " voice notes") + " from sober you");
+  if(ev) parts.push(ev + (ev === 1 ? " proof photo" : " proof photos"));
+  msg.textContent = "Waiting for you: " + parts.join(" and ") + ".";
+}
+
+/* ============ VOICE NOTES ============ */
+let voiceRec = null;
+let voiceChunks = [];
+let voiceRecTimer = null;
+let voiceRecStart = 0;
+let voiceAudio = null;
+let voicePlayingId = null;
+let voiceObjectUrl = null;
+
+function voiceSupported(){
+  return !!(mediaSupported() && typeof MediaRecorder !== "undefined" &&
+    typeof navigator !== "undefined" && navigator.mediaDevices &&
+    typeof navigator.mediaDevices.getUserMedia === "function");
+}
+function fmtDur(sec){
+  sec = Math.max(0, Math.round(sec || 0));
+  return Math.floor(sec / 60) + ":" + pad(sec % 60);
+}
+function renderVoiceNotes(){
+  const el = $("voiceNotesList");
+  if(!el) return;
+  const ok = voiceSupported();
+  $("voiceRecBtn").disabled = !ok;
+  if(!ok){
+    $("voiceMsg").textContent = "Voice recording isn't supported in this browser, so notes can't be recorded or kept here.";
+  }
+  if(!state.voiceNotes.length){
+    el.innerHTML = '<p class="muted" style="margin:0;">No notes yet. On the next good day, record one \u2014 thirty seconds is plenty, and future you will be glad you did.</p>';
+  } else {
+    el.innerHTML = "";
+    state.voiceNotes.slice().reverse().forEach(function(n){
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = '<div class="meta">' + esc(fmtDateTime(new Date(n.ts).toISOString())) + " &middot; " + esc(fmtDur(n.dur)) + "</div>" +
+        (n.label ? "<div>" + esc(n.label) + "</div>" : "");
+      const acts = document.createElement("div");
+      acts.className = "actions";
+      const play = document.createElement("button");
+      play.className = "small"; play.textContent = voicePlayingId === n.id ? "Stop" : "Play";
+      play.addEventListener("click", function(){ toggleVoicePlay(n); });
+      const del = document.createElement("button");
+      del.className = "small ghost"; del.textContent = "Delete";
+      del.addEventListener("click", function(){
+        if(!confirm("Delete this voice note?")) return;
+        if(voicePlayingId === n.id) stopVoicePlay();
+        state.voiceNotes = state.voiceNotes.filter(function(q){ return q.id !== n.id; });
+        mediaDelete("audio", n.id).catch(function(){});
+        saveState(); renderVoiceNotes();
+      });
+      acts.appendChild(play); acts.appendChild(del);
+      div.appendChild(acts); el.appendChild(div);
+    });
+  }
+  renderSosMedia();
+}
+function stopVoicePlay(){
+  if(voiceAudio){ try{ voiceAudio.pause(); }catch(e){} voiceAudio = null; }
+  if(voiceObjectUrl){ try{ URL.revokeObjectURL(voiceObjectUrl); }catch(e){} voiceObjectUrl = null; }
+  voicePlayingId = null;
+}
+function playVoiceNote(n){
+  stopVoicePlay();
+  return mediaGet("audio", n.id).then(function(blob){
+    if(!blob) throw new Error("note missing");
+    voiceObjectUrl = URL.createObjectURL(blob);
+    voiceAudio = new Audio(voiceObjectUrl);
+    voicePlayingId = n.id;
+    voiceAudio.addEventListener("ended", function(){
+      stopVoicePlay(); renderVoiceNotes();
+    });
+    const p = voiceAudio.play();
+    return p && typeof p.catch === "function" ? p.catch(function(){}) : p;
+  });
+}
+function toggleVoicePlay(n){
+  if(voicePlayingId === n.id){ stopVoicePlay(); renderVoiceNotes(); return; }
+  playVoiceNote(n).then(function(){
+    renderVoiceNotes();
+  }).catch(function(){
+    stopVoicePlay();
+    $("voiceMsg").textContent = "Couldn't play that note \u2014 it may no longer be stored in this browser.";
+    renderVoiceNotes();
+  });
+}
+function voicePickMime(){
+  const types = ["audio/webm;codecs=opus", "audio/webm", "audio/mp4", "audio/ogg;codecs=opus", "audio/ogg"];
+  if(typeof MediaRecorder === "undefined" || typeof MediaRecorder.isTypeSupported !== "function") return "";
+  for(let i = 0; i < types.length; i++){ if(MediaRecorder.isTypeSupported(types[i])) return types[i]; }
+  return "";
+}
+function updateVoiceRecTime(){
+  const s = Math.floor((Date.now() - voiceRecStart) / 1000);
+  $("voiceRecTime").textContent = "Recording\u2026 " + fmtDur(s) + " / 1:00";
+}
+function stopVoiceRecording(){
+  if(voiceRec && voiceRec.state !== "inactive"){ try{ voiceRec.stop(); }catch(e){} }
+}
+function finishVoiceRecording(){
+  if(voiceRecTimer){ clearInterval(voiceRecTimer); voiceRecTimer = null; }
+  $("voiceRecBtn").classList.remove("hidden");
+  $("voiceStopBtn").classList.add("hidden");
+  $("voiceLabel").disabled = false;
+  $("voiceRecTime").textContent = "";
+  const dur = Math.max(1, Math.round((Date.now() - voiceRecStart) / 1000));
+  const mime = (voiceRec && voiceRec.mimeType) || "audio/webm";
+  const chunks = voiceChunks;
+  voiceRec = null; voiceChunks = [];
+  const blob = new Blob(chunks, {type:mime});
+  if(!blob.size){ $("voiceMsg").textContent = "That recording came out empty \u2014 try again."; return; }
+  const id = uid();
+  const label = $("voiceLabel").value.trim();
+  mediaPut("audio", id, blob).then(function(){
+    state.voiceNotes.push({id:id, ts:Date.now(), dur:dur, label:label});
+    $("voiceLabel").value = "";
+    saveState(); renderVoiceNotes();
+    $("voiceMsg").textContent = "Saved. Sober you just left a message for a rough night.";
+  }).catch(function(){
+    $("voiceMsg").textContent = "Couldn't save that note in this browser.";
+  });
+}
+$("voiceRecBtn").addEventListener("click", function(){
+  const msg = $("voiceMsg");
+  if(!voiceSupported()){ msg.textContent = "Voice recording isn't supported in this browser."; return; }
+  msg.textContent = "";
+  navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
+    voiceChunks = [];
+    const mime = voicePickMime();
+    try{ voiceRec = mime ? new MediaRecorder(stream, {mimeType:mime}) : new MediaRecorder(stream); }
+    catch(e){
+      try{ voiceRec = new MediaRecorder(stream); }
+      catch(e2){ stream.getTracks().forEach(function(t){ t.stop(); }); msg.textContent = "Recording couldn't start in this browser."; return; }
+    }
+    voiceRec.addEventListener("dataavailable", function(e){ if(e.data && e.data.size) voiceChunks.push(e.data); });
+    voiceRec.addEventListener("stop", function(){
+      stream.getTracks().forEach(function(t){ t.stop(); });
+      finishVoiceRecording();
+    });
+    try{ voiceRec.start(); }catch(e){ msg.textContent = "Recording couldn't start in this browser."; return; }
+    voiceRecStart = Date.now();
+    if(voicePlayingId) stopVoicePlay();
+    $("voiceRecBtn").classList.add("hidden");
+    $("voiceStopBtn").classList.remove("hidden");
+    $("voiceLabel").disabled = true;
+    updateVoiceRecTime();
+    voiceRecTimer = setInterval(function(){
+      updateVoiceRecTime();
+      if(Date.now() - voiceRecStart >= 60000) stopVoiceRecording();
+    }, 250);
+  }).catch(function(){
+    msg.textContent = "Microphone access was denied \u2014 no note recorded. You can allow it in your browser settings and try again.";
+  });
+});
+$("voiceStopBtn").addEventListener("click", stopVoiceRecording);
+$("sosVoiceBtn").addEventListener("click", function(){
+  const msg = $("sosMediaMsg");
+  if(voicePlayingId){ stopVoicePlay(); renderVoiceNotes(); return; }
+  if(!state.voiceNotes.length){
+    msg.textContent = "No notes yet \u2014 record one on a good day (Journey tab).";
+    return;
+  }
+  const n = state.voiceNotes.length === 1 ? state.voiceNotes[0] :
+    state.voiceNotes[Math.floor(Math.random() * state.voiceNotes.length)];
+  playVoiceNote(n).then(function(){
+    renderVoiceNotes();
+    msg.textContent = "Playing a message from sober you" + (n.label ? ": \u201C" + n.label + "\u201D" : "") + ". Tap the button again to stop it.";
+  }).catch(function(){
+    stopVoicePlay(); renderVoiceNotes();
+    msg.textContent = "Couldn't play a note \u2014 it may no longer be stored in this browser.";
+  });
+});
+
+/* ============ PROOF PHOTOS ============ */
+let photoIdx = 0;
+const evUrls = {};
+function renderEvidence(){
+  const grid = $("evidenceGrid");
+  if(!grid) return;
+  Object.keys(evUrls).forEach(function(id){
+    if(!state.evidence.some(function(p){ return p.id === id; })){
+      try{ URL.revokeObjectURL(evUrls[id]); }catch(e){}
+      delete evUrls[id];
+    }
+  });
+  if(!mediaSupported()){
+    grid.innerHTML = '<p class="muted" style="margin:0;">Photo storage isn\'t supported in this browser, so photos can\'t be kept here.</p>';
+    $("evidenceAddBtn").disabled = true;
+  } else if(!state.evidence.length){
+    grid.innerHTML = '<p class="muted" style="margin:0;">No photos yet. Add the first piece of proof below \u2014 future you is counting on it.</p>';
+  } else {
+    grid.innerHTML = "";
+    state.evidence.slice().reverse().forEach(function(p, ri){
+      const idx = state.evidence.length - 1 - ri;
+      const btn = document.createElement("button");
+      btn.setAttribute("aria-label", p.caption ? "Proof photo: " + p.caption : "Proof photo");
+      const img = document.createElement("img");
+      img.alt = p.caption || "";
+      btn.appendChild(img);
+      btn.addEventListener("click", function(){ openPhoto(idx); });
+      grid.appendChild(btn);
+      loadEvThumb(p, img, btn);
+    });
+  }
+  renderSosMedia();
+}
+function loadEvThumb(p, img, btn){
+  if(evUrls[p.id]){ img.src = evUrls[p.id]; return; }
+  mediaGet("photos", p.id).then(function(blob){
+    if(!blob){ btn.style.display = "none"; return; }
+    if(!state.evidence.some(function(q){ return q.id === p.id; })) return;
+    evUrls[p.id] = URL.createObjectURL(blob);
+    img.src = evUrls[p.id];
+  }).catch(function(){ btn.style.display = "none"; });
+}
+function downscaleImage(file){
+  return new Promise(function(resolve, reject){
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = function(){
+      try{
+        const w0 = img.naturalWidth, h0 = img.naturalHeight;
+        if(!w0 || !h0){ URL.revokeObjectURL(url); reject(new Error("bad image")); return; }
+        const scale = Math.min(1, 1280 / Math.max(w0, h0));
+        const cv = document.createElement("canvas");
+        cv.width = Math.round(w0 * scale); cv.height = Math.round(h0 * scale);
+        cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+        URL.revokeObjectURL(url);
+        if(typeof cv.toBlob === "function"){
+          cv.toBlob(function(b){ if(b) resolve(b); else reject(new Error("encode failed")); }, "image/jpeg", 0.82);
+        } else {
+          const parts = cv.toDataURL("image/jpeg", 0.82).split(",");
+          const bin = atob(parts[1]);
+          const arr = new Uint8Array(bin.length);
+          for(let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+          resolve(new Blob([arr], {type:"image/jpeg"}));
+        }
+      }catch(e){ URL.revokeObjectURL(url); reject(e); }
+    };
+    img.onerror = function(){ URL.revokeObjectURL(url); reject(new Error("load failed")); };
+    img.src = url;
+  });
+}
+$("evidenceAddBtn").addEventListener("click", function(){
+  if(!mediaSupported()){ $("evidenceMsg").textContent = "Photo storage isn't supported in this browser."; return; }
+  $("evidenceFile").click();
+});
+$("evidenceFile").addEventListener("change", function(){
+  const input = $("evidenceFile");
+  const file = input.files && input.files[0];
+  input.value = "";
+  if(!file) return;
+  const msg = $("evidenceMsg");
+  msg.textContent = "Saving your photo\u2026";
+  downscaleImage(file).then(function(blob){
+    const id = uid();
+    return mediaPut("photos", id, blob).then(function(){
+      state.evidence.push({id:id, ts:Date.now(), caption:$("evidenceCaption").value.trim()});
+      $("evidenceCaption").value = "";
+      saveState(); renderEvidence();
+      msg.textContent = "Added. That's proof.";
+    });
+  }).catch(function(){
+    msg.textContent = "Couldn't save that photo \u2014 try a different one.";
+  });
+});
+function openPhoto(idx){
+  if(idx < 0 || idx >= state.evidence.length) return;
+  photoIdx = idx;
+  renderPhotoView();
+  $("photoOverlay").classList.remove("hidden");
+}
+function closePhoto(){
+  $("photoOverlay").classList.add("hidden");
+}
+function renderPhotoView(){
+  const p = state.evidence[photoIdx];
+  const view = $("photoView");
+  if(!p){ closePhoto(); return; }
+  view.innerHTML = "";
+  const img = document.createElement("img");
+  img.className = "evbig";
+  img.alt = p.caption || "";
+  view.appendChild(img);
+  const cap = document.createElement("div");
+  cap.className = "mt8";
+  cap.innerHTML = (p.caption ? '<div style="font-weight:700;">' + esc(p.caption) + "</div>" : "") +
+    '<div class="muted">' + esc(fmtDateTime(new Date(p.ts).toISOString())) + " &middot; photo " + (photoIdx + 1) + " of " + state.evidence.length + "</div>";
+  view.appendChild(cap);
+  $("photoPrev").disabled = photoIdx === 0;
+  $("photoNext").disabled = photoIdx === state.evidence.length - 1;
+  if(evUrls[p.id]){ img.src = evUrls[p.id]; return; }
+  mediaGet("photos", p.id).then(function(blob){
+    if(!blob) return;
+    if(!state.evidence.some(function(q){ return q.id === p.id; })) return;
+    evUrls[p.id] = URL.createObjectURL(blob);
+    if(state.evidence[photoIdx] && state.evidence[photoIdx].id === p.id) img.src = evUrls[p.id];
+  }).catch(function(){});
+}
+$("photoClose").addEventListener("click", closePhoto);
+$("photoPrev").addEventListener("click", function(){ if(photoIdx > 0){ photoIdx--; renderPhotoView(); } });
+$("photoNext").addEventListener("click", function(){ if(photoIdx < state.evidence.length - 1){ photoIdx++; renderPhotoView(); } });
+$("photoDelete").addEventListener("click", function(){
+  const p = state.evidence[photoIdx];
+  if(!p) return;
+  if(!confirm("Delete this photo?")) return;
+  state.evidence = state.evidence.filter(function(q){ return q.id !== p.id; });
+  if(evUrls[p.id]){ try{ URL.revokeObjectURL(evUrls[p.id]); }catch(e){} delete evUrls[p.id]; }
+  mediaDelete("photos", p.id).catch(function(){});
+  saveState(); renderEvidence();
+  if(!state.evidence.length) closePhoto();
+  else { if(photoIdx >= state.evidence.length) photoIdx = state.evidence.length - 1; renderPhotoView(); }
+});
+$("sosProofBtn").addEventListener("click", function(){
+  if(!state.evidence.length){
+    $("sosMediaMsg").textContent = "No proof photos yet \u2014 add the first one on the Journey tab.";
+    return;
+  }
+  openPhoto(state.evidence.length - 1);
 });
 
 /* ============ CONFETTI ============ */
@@ -4076,6 +4536,8 @@ function renderAll(){
   renderMilestones();
   renderChips();
   renderStoryCard();
+  renderVoiceNotes();
+  renderEvidence();
   renderPledge();
   renderCountdown();
   renderCheckin();
