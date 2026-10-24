@@ -319,6 +319,12 @@
       <div class="countdown" id="meetCount">--:--:--</div>
     </div>
 
+    <div class="card hidden" id="bpTodayCard">
+      <h2>&#x2694;&#xFE0F; Next battle plan</h2>
+      <p class="muted" style="margin:0;" id="bpTodayText"></p>
+      <button id="bpTodayOpen" class="small mt8">Open plan</button>
+    </div>
+
     <div class="card">
       <h2>&#x2705; Daily check-in</h2>
       <p class="muted" id="ciTodayStatus">Not logged yet today — no pressure either way.</p>
@@ -428,6 +434,56 @@
       </div>
       <p class="muted mt8" id="evidenceMsg" style="margin-bottom:0;"></p>
       <p class="muted mt8" style="margin-bottom:0;">Photos live in this browser only — they aren't part of the JSON backup in Settings, so they won't move to a new phone.</p>
+    </div>
+
+    <div class="card" id="battleCard">
+      <h2>&#x2694;&#xFE0F; Battle plans</h2>
+      <p class="muted" style="margin-top:0;">Plans are made on a clear-headed day, not during the event.</p>
+      <div id="bpExamples" class="hidden">
+        <p class="muted" style="margin:0 0 8px;">No plans yet — tap one to start it (nothing is saved until you save the plan):</p>
+        <div class="chips" id="bpExampleChips"></div>
+      </div>
+      <label class="lbl" for="bpName">Event</label>
+      <input id="bpName" placeholder="e.g. Thanksgiving dinner" maxlength="80">
+      <label class="lbl" for="bpDate">Date</label>
+      <input type="date" id="bpDate">
+      <label class="lbl">Triggers you expect</label>
+      <div class="chips" id="bpTriggers"></div>
+      <label class="lbl" for="bpOther">Other trigger (optional)</label>
+      <input id="bpOther" placeholder="e.g. Uncle Dan's toasts" maxlength="80">
+      <label class="lbl" for="bpDrink">What you'll drink instead</label>
+      <input id="bpDrink" placeholder="e.g. Sparkling water with lime" maxlength="120">
+      <label class="lbl" for="bpEscape">How you'll leave early if you need to</label>
+      <textarea id="bpEscape" placeholder="e.g. Drive myself, thank the host, text my person on the way out" maxlength="300"></textarea>
+      <label class="lbl" for="bpSupportName">Support person (optional)</label>
+      <input id="bpSupportName" placeholder="e.g. Ed" maxlength="60">
+      <label class="lbl" for="bpSupportText">Ready-to-send text</label>
+      <textarea id="bpSupportText" maxlength="300">Hey, I'm at [event] and it's getting tricky — can you talk for a minute?</textarea>
+      <div class="row mt8">
+        <button id="bpSave" class="small">Save plan</button>
+        <button id="bpCancel" class="small ghost hidden">Cancel edit</button>
+      </div>
+      <p class="muted mt8" id="bpMsg" style="margin-bottom:0;"></p>
+      <div id="battleList" class="mt12"></div>
+      <div class="mt12">
+        <button id="bpPastToggle" class="small ghost hidden">Past plans</button>
+        <div id="battlePast" class="hidden mt8"></div>
+      </div>
+    </div>
+
+    <div class="card" id="stoleCard">
+      <h2>Things drinking stole</h2>
+      <p class="muted" style="margin-top:0;">The life sobriety is buying back. Add the things, check them off as you live them.</p>
+      <div class="row">
+        <input id="stoleInput" placeholder="e.g. A sunrise hike, clear-headed" maxlength="120" style="flex:1; min-width:160px;">
+        <button id="stoleAdd" class="small">Add</button>
+      </div>
+      <div id="stoleStarters" class="hidden mt8">
+        <p class="muted" style="margin:0 0 8px;">Nothing here yet — tap one to add it:</p>
+        <div class="chips" id="stoleStarterChips"></div>
+      </div>
+      <p class="muted mt8" id="stoleMsg" style="margin-bottom:0;"></p>
+      <div id="stoleList" class="mt12"></div>
     </div>
 
     <div class="card">
@@ -845,6 +901,12 @@
       <p class="muted mt8" id="sosMediaMsg" style="margin-bottom:0;"></p>
     </div>
 
+    <div class="card center hidden" id="bpSosCard">
+      <h2>&#x2694;&#xFE0F; Today's battle plan</h2>
+      <p class="muted" style="margin-bottom:0;" id="bpSosText"></p>
+      <div class="row mt12" style="justify-content:center;" id="bpSosActions"></div>
+    </div>
+
     <div class="card">
       <h2>&#x1F4DE; My people</h2>
       <div id="sosContactsList"></div>
@@ -1228,6 +1290,9 @@
       <button id="photoNext" class="small ghost">Next</button>
     </div>
     <div class="row mt8" style="justify-content:center;">
+      <button id="photoPickBtn" class="small hidden">Use this photo</button>
+    </div>
+    <div class="row mt8" style="justify-content:center;">
       <button id="photoClose" class="small ghost">Close</button>
     </div>
   </div>
@@ -1259,6 +1324,7 @@ function defaultState(){
     sosContacts:[], water:{},
     slips:[], futureLetters:[], promptIdx:0, reduceMotion:null, textSize:"normal",
     voiceNotes:[], evidence:[],
+    battlePlans:[], stoleList:[],
     activities:[], fitnessGoals:{daysPerWeek:0,distPerWeek:0}, distUnit:"mi",
     smoke:defaultSmoke()
   };
@@ -2263,6 +2329,7 @@ function openPhoto(idx){
   $("photoOverlay").classList.remove("hidden");
 }
 function closePhoto(){
+  photoPickFor = null;
   $("photoOverlay").classList.add("hidden");
 }
 function renderPhotoView(){
@@ -2281,6 +2348,8 @@ function renderPhotoView(){
   view.appendChild(cap);
   $("photoPrev").disabled = photoIdx === 0;
   $("photoNext").disabled = photoIdx === state.evidence.length - 1;
+  $("photoPickBtn").classList.toggle("hidden", !photoPickFor);
+  $("photoDelete").classList.toggle("hidden", !!photoPickFor);
   if(evUrls[p.id]){ img.src = evUrls[p.id]; return; }
   mediaGet("photos", p.id).then(function(blob){
     if(!blob) return;
@@ -2297,9 +2366,10 @@ $("photoDelete").addEventListener("click", function(){
   if(!p) return;
   if(!confirm("Delete this photo?")) return;
   state.evidence = state.evidence.filter(function(q){ return q.id !== p.id; });
+  state.stoleList.forEach(function(it){ if(it.photoId === p.id) it.photoId = null; });
   if(evUrls[p.id]){ try{ URL.revokeObjectURL(evUrls[p.id]); }catch(e){} delete evUrls[p.id]; }
   mediaDelete("photos", p.id).catch(function(){});
-  saveState(); renderEvidence();
+  saveState(); renderEvidence(); renderStole();
   if(!state.evidence.length) closePhoto();
   else { if(photoIdx >= state.evidence.length) photoIdx = state.evidence.length - 1; renderPhotoView(); }
 });
@@ -2309,6 +2379,384 @@ $("sosProofBtn").addEventListener("click", function(){
     return;
   }
   openPhoto(state.evidence.length - 1);
+});
+
+/* ============ BATTLE PLANS ============ */
+const BP_EXAMPLES = ["Halloween party", "Thanksgiving dinner", "Christmas gathering", "Family barbecue"];
+const BP_DEFAULT_TEXT = "Hey, I'm at [event] and it's getting tricky — can you talk for a minute?";
+let bpEditId = null;
+let bpTrigSel = [];
+let bpPastOpen = false;
+function bpResetForm(){
+  bpEditId = null; bpTrigSel = [];
+  $("bpName").value = ""; $("bpDate").value = ""; $("bpOther").value = "";
+  $("bpDrink").value = ""; $("bpEscape").value = ""; $("bpSupportName").value = "";
+  $("bpSupportText").value = BP_DEFAULT_TEXT;
+  $("bpCancel").classList.add("hidden");
+  $("bpMsg").textContent = "";
+}
+function bpPlanDate(p){ return p.date || ""; }
+function bpIsPast(p){
+  const d = bpPlanDate(p);
+  return d !== "" && d < todayKey();
+}
+function bpDaysAway(p){
+  const d = bpPlanDate(p);
+  if(!d) return null;
+  return Math.round((keyToDate(d).getTime() - keyToDate(todayKey()).getTime()) / 86400000);
+}
+function bpSupportTextFor(p){
+  return (p.supportText || "").replace(/\[event\]/g, p.name || "this event");
+}
+function appendSendAction(container, plan, msgEl){
+  const text = bpSupportTextFor(plan);
+  if(!text.trim()){
+    const note = document.createElement("span");
+    note.className = "muted"; note.textContent = "Add a ready-to-send text to this plan.";
+    container.appendChild(note); return;
+  }
+  const contact = plan.supportName ? state.sosContacts.find(function(c){
+    return c.name && c.name.toLowerCase() === plan.supportName.toLowerCase() && c.phone;
+  }) : null;
+  if(contact){
+    const a = document.createElement("a");
+    a.className = "small";
+    a.href = "sms:" + contact.phone.replace(/[^+\d]/g, "") + "?body=" + encodeURIComponent(text);
+    a.textContent = "Send the text";
+    container.appendChild(a);
+  } else {
+    const b = document.createElement("button");
+    b.className = "small"; b.textContent = "Copy text";
+    b.addEventListener("click", function(){
+      copyTextToClipboard(text, function(ok){
+        if(msgEl) msgEl.textContent = ok ? "Copied — paste it into any message." : "Couldn't copy — long-press the plan to select the text.";
+      });
+    });
+    container.appendChild(b);
+  }
+}
+function copyTextToClipboard(text, done){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(function(){ if(done) done(true); }, function(){ copyTextFallback(text, done); });
+  } else copyTextFallback(text, done);
+}
+function copyTextFallback(text, done){
+  try{
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    if(done) done(ok);
+  }catch(e){ if(done) done(false); }
+}
+function battlePlanCard(p){
+  const div = document.createElement("div");
+  div.className = "item";
+  const head = document.createElement("div");
+  head.style.fontWeight = "700";
+  head.textContent = p.name + (p.date ? " — " + fmtDate(p.date) : "");
+  div.appendChild(head);
+  if(p.triggers && p.triggers.length){
+    const t = document.createElement("div");
+    t.className = "muted"; t.textContent = "Expecting: " + p.triggers.join(", ");
+    div.appendChild(t);
+  }
+  if(p.drinkPlan){
+    const d = document.createElement("div");
+    d.innerHTML = "<b>Instead:</b> " + esc(p.drinkPlan);
+    div.appendChild(d);
+  }
+  if(p.escapePlan){
+    const e = document.createElement("div");
+    e.innerHTML = "<b>Way out:</b> " + esc(p.escapePlan);
+    div.appendChild(e);
+  }
+  if(p.supportName || p.supportText){
+    const s = document.createElement("div");
+    s.className = "muted";
+    s.innerHTML = (p.supportName ? "Text ready for " + esc(p.supportName) + ": " : "") +
+      (p.supportText ? "“" + esc(bpSupportTextFor(p)) + "”" : "");
+    div.appendChild(s);
+  }
+  const row = document.createElement("div");
+  row.className = "row mt8";
+  appendSendAction(row, p, $("bpMsg"));
+  const edit = document.createElement("button");
+  edit.className = "small ghost"; edit.textContent = "Edit";
+  edit.addEventListener("click", function(){ bpStartEdit(p); });
+  row.appendChild(edit);
+  const del = document.createElement("button");
+  del.className = "small danger"; del.textContent = "Delete";
+  del.addEventListener("click", function(){
+    if(!confirm("Delete this battle plan?")) return;
+    state.battlePlans = state.battlePlans.filter(function(q){ return q.id !== p.id; });
+    saveState(); renderBattlePlans();
+  });
+  row.appendChild(del);
+  div.appendChild(row);
+  return div;
+}
+function bpStartEdit(p){
+  bpEditId = p.id;
+  bpTrigSel = (p.triggers || []).filter(function(t){ return TRIGGERS.indexOf(t) !== -1; });
+  const others = (p.triggers || []).filter(function(t){ return TRIGGERS.indexOf(t) === -1; });
+  $("bpName").value = p.name || "";
+  $("bpDate").value = p.date || "";
+  $("bpOther").value = others.join(", ");
+  $("bpDrink").value = p.drinkPlan || "";
+  $("bpEscape").value = p.escapePlan || "";
+  $("bpSupportName").value = p.supportName || "";
+  $("bpSupportText").value = p.supportText || BP_DEFAULT_TEXT;
+  $("bpCancel").classList.remove("hidden");
+  renderBattlePlans();
+  const card = $("battleCard");
+  if(card && card.scrollIntoView) card.scrollIntoView({behavior: state.reduceMotion ? "auto" : "smooth", block:"start"});
+}
+function renderBattlePlans(){
+  const chips = $("bpTriggers");
+  chips.innerHTML = "";
+  TRIGGERS.forEach(function(t){
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = t;
+    if(bpTrigSel.indexOf(t) !== -1) b.classList.add("on");
+    b.addEventListener("click", function(){
+      const i = bpTrigSel.indexOf(t);
+      if(i === -1) bpTrigSel.push(t); else bpTrigSel.splice(i, 1);
+      b.classList.toggle("on");
+    });
+    chips.appendChild(b);
+  });
+  const ex = $("bpExamples");
+  if(!state.battlePlans.length){
+    ex.classList.remove("hidden");
+    const wrap = $("bpExampleChips");
+    wrap.innerHTML = "";
+    BP_EXAMPLES.forEach(function(name){
+      const b = document.createElement("button");
+      b.type = "button"; b.textContent = name;
+      b.addEventListener("click", function(){
+        $("bpName").value = name;
+        $("bpName").focus();
+      });
+      wrap.appendChild(b);
+    });
+  } else ex.classList.add("hidden");
+  const upcoming = state.battlePlans.filter(function(p){ return !bpIsPast(p); });
+  const past = state.battlePlans.filter(function(p){ return bpIsPast(p); });
+  upcoming.sort(function(a, b){
+    if(!a.date && !b.date) return 0;
+    if(!a.date) return 1;
+    if(!b.date) return -1;
+    return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0);
+  });
+  past.sort(function(a, b){ return a.date < b.date ? 1 : (a.date > b.date ? -1 : 0); });
+  const list = $("battleList");
+  list.innerHTML = "";
+  if(!upcoming.length && past.length){
+    list.innerHTML = '<p class="muted" style="margin:0;">No upcoming plans — your past plans are below.</p>';
+  } else if(!upcoming.length && !past.length){
+    list.innerHTML = '<p class="muted" style="margin:0;">No battle plans yet. Make one on a clear-headed day, before the event.</p>';
+  } else upcoming.forEach(function(p){ list.appendChild(battlePlanCard(p)); });
+  const pastBtn = $("bpPastToggle");
+  const pastWrap = $("battlePast");
+  if(past.length){
+    pastBtn.classList.remove("hidden");
+    pastBtn.textContent = bpPastOpen ? "Hide past plans" : "Past plans (" + past.length + ")";
+    pastWrap.classList.toggle("hidden", !bpPastOpen);
+    pastWrap.innerHTML = "";
+    past.forEach(function(p){ pastWrap.appendChild(battlePlanCard(p)); });
+  } else {
+    pastBtn.classList.add("hidden");
+    pastWrap.classList.add("hidden");
+    pastWrap.innerHTML = "";
+  }
+  const today = state.battlePlans.find(function(p){ return p.date === todayKey(); });
+  const sosCard = $("bpSosCard");
+  if(today){
+    sosCard.classList.remove("hidden");
+    const txt = $("bpSosText");
+    txt.innerHTML = "<b>" + esc(today.name) + "</b> is today." +
+      (today.escapePlan ? " Way out, if you need it: " + esc(today.escapePlan) : "");
+    const acts = $("bpSosActions");
+    acts.innerHTML = "";
+    appendSendAction(acts, today, null);
+  } else sosCard.classList.add("hidden");
+  const strip = $("bpTodayCard");
+  let nearest = null, nearestDays = 999;
+  state.battlePlans.forEach(function(p){
+    const d = bpDaysAway(p);
+    if(d !== null && d >= 0 && d <= 14 && d < nearestDays){ nearest = p; nearestDays = d; }
+  });
+  if(nearest){
+    strip.classList.remove("hidden");
+    $("bpTodayText").innerHTML = "<b>" + esc(nearest.name) + "</b> — " + fmtDate(nearest.date) +
+      (nearestDays === 0 ? " (today)" : nearestDays === 1 ? " (tomorrow)" : " (in " + nearestDays + " days)");
+    $("bpTodayOpen").onclick = function(){
+      switchTab("journey");
+      const card = $("battleCard");
+      if(card && card.scrollIntoView) card.scrollIntoView({behavior: state.reduceMotion ? "auto" : "smooth", block:"start"});
+    };
+  } else strip.classList.add("hidden");
+}
+$("bpSave").addEventListener("click", function(){
+  const name = $("bpName").value.trim();
+  if(!name){ $("bpMsg").textContent = "Give the plan a name first."; return; }
+  const triggers = bpTrigSel.slice();
+  const other = $("bpOther").value.trim();
+  if(other) triggers.push(other);
+  const data = {
+    name: name,
+    date: $("bpDate").value || "",
+    triggers: triggers,
+    drinkPlan: $("bpDrink").value.trim(),
+    escapePlan: $("bpEscape").value.trim(),
+    supportName: $("bpSupportName").value.trim(),
+    supportText: $("bpSupportText").value.trim()
+  };
+  if(bpEditId){
+    const p = state.battlePlans.find(function(q){ return q.id === bpEditId; });
+    if(p) Object.assign(p, data);
+  } else {
+    data.id = uid();
+    state.battlePlans.push(data);
+  }
+  saveState(); bpResetForm(); renderBattlePlans();
+  $("bpMsg").textContent = "Plan saved. Future you says thanks.";
+});
+$("bpCancel").addEventListener("click", function(){ bpResetForm(); renderBattlePlans(); });
+$("bpPastToggle").addEventListener("click", function(){ bpPastOpen = !bpPastOpen; renderBattlePlans(); });
+
+/* ============ THINGS DRINKING STOLE ============ */
+const STOLE_STARTERS = ["A morning walk on the beach", "A holiday, clear-headed", "A family day at the zoo"];
+function renderStole(){
+  const starters = $("stoleStarters");
+  if(!state.stoleList.length){
+    starters.classList.remove("hidden");
+    const wrap = $("stoleStarterChips");
+    wrap.innerHTML = "";
+    STOLE_STARTERS.forEach(function(text){
+      const b = document.createElement("button");
+      b.type = "button"; b.textContent = text;
+      b.addEventListener("click", function(){
+        state.stoleList.push({id:uid(), text:text, done:false, doneTs:null, photoId:null});
+        saveState(); renderStole();
+      });
+      wrap.appendChild(b);
+    });
+  } else starters.classList.add("hidden");
+  const list = $("stoleList");
+  list.innerHTML = "";
+  if(!state.stoleList.length){
+    list.innerHTML = '<p class="muted" style="margin:0;">Nothing here yet — add the first thing you want back.</p>';
+    return;
+  }
+  const open = state.stoleList.filter(function(it){ return !it.done; });
+  const done = state.stoleList.filter(function(it){ return it.done; })
+    .sort(function(a, b){ return (b.doneTs || 0) - (a.doneTs || 0); });
+  open.concat(done).forEach(function(it){
+    const row = document.createElement("div");
+    row.className = "item";
+    const top = document.createElement("div");
+    top.className = "row";
+    top.style.alignItems = "center";
+    const cb = document.createElement("input");
+    cb.type = "checkbox"; cb.checked = !!it.done;
+    cb.setAttribute("aria-label", "Done: " + it.text);
+    cb.addEventListener("change", function(){
+      it.done = cb.checked;
+      it.doneTs = it.done ? Date.now() : null;
+      saveState(); renderStole();
+    });
+    top.appendChild(cb);
+    const tx = document.createElement("span");
+    tx.style.flex = "1";
+    if(it.done) tx.style.textDecoration = "line-through";
+    tx.textContent = it.text;
+    top.appendChild(tx);
+    if(it.photoId){
+      const img = document.createElement("img");
+      img.alt = "";
+      img.style.cssText = "width:48px;height:48px;object-fit:cover;border-radius:8px;";
+      img.addEventListener("click", function(){
+        const idx = state.evidence.findIndex(function(p){ return p.id === it.photoId; });
+        if(idx !== -1) openPhoto(idx);
+      });
+      top.appendChild(img);
+      loadStoleThumb(it, img);
+    }
+    row.appendChild(top);
+    if(it.done && it.doneTs){
+      const dl = document.createElement("div");
+      dl.className = "muted";
+      dl.textContent = "Done — " + fmtDate(localKey(new Date(it.doneTs)));
+      row.appendChild(dl);
+    }
+    const acts = document.createElement("div");
+    acts.className = "row mt8";
+    if(it.done){
+      if(it.photoId){
+        const un = document.createElement("button");
+        un.className = "small ghost"; un.textContent = "Unlink photo";
+        un.addEventListener("click", function(){ it.photoId = null; saveState(); renderStole(); });
+        acts.appendChild(un);
+      } else {
+        const lk = document.createElement("button");
+        lk.className = "small"; lk.textContent = "\uD83D\uDCF8 Link photo";
+        lk.addEventListener("click", function(){
+          if(!state.evidence.length){
+            $("stoleMsg").textContent = "No photos yet — add one to the wall first.";
+            return;
+          }
+          openPhotoPick(it.id);
+        });
+        acts.appendChild(lk);
+      }
+    }
+    const del = document.createElement("button");
+    del.className = "small danger"; del.textContent = "Delete";
+    del.addEventListener("click", function(){
+      if(!confirm("Remove this from the list?")) return;
+      state.stoleList = state.stoleList.filter(function(q){ return q.id !== it.id; });
+      saveState(); renderStole();
+    });
+    acts.appendChild(del);
+    row.appendChild(acts);
+    list.appendChild(row);
+  });
+}
+function loadStoleThumb(it, img){
+  if(evUrls[it.photoId]){ img.src = evUrls[it.photoId]; return; }
+  mediaGet("photos", it.photoId).then(function(blob){
+    if(!blob){ img.style.display = "none"; return; }
+    if(!state.stoleList.some(function(q){ return q.id === it.id && q.photoId === it.photoId; })) return;
+    evUrls[it.photoId] = URL.createObjectURL(blob);
+    img.src = evUrls[it.photoId];
+  }).catch(function(){ img.style.display = "none"; });
+}
+$("stoleAdd").addEventListener("click", function(){
+  const v = $("stoleInput").value.trim();
+  if(!v) return;
+  state.stoleList.push({id:uid(), text:v, done:false, doneTs:null, photoId:null});
+  $("stoleInput").value = "";
+  saveState(); renderStole();
+});
+$("stoleInput").addEventListener("keydown", function(e){
+  if(e.key === "Enter") $("stoleAdd").click();
+});
+
+/* ============ PHOTO PICK MODE (link a wall photo to a stole item) ============ */
+let photoPickFor = null;
+function openPhotoPick(itemId){
+  photoPickFor = itemId;
+  openPhoto(state.evidence.length - 1);
+}
+$("photoPickBtn").addEventListener("click", function(){
+  const item = state.stoleList.find(function(q){ return q.id === photoPickFor; });
+  const p = state.evidence[photoIdx];
+  if(item && p) item.photoId = p.id;
+  photoPickFor = null;
+  saveState(); renderStole(); closePhoto();
 });
 
 /* ============ CONFETTI ============ */
@@ -4538,6 +4986,8 @@ function renderAll(){
   renderStoryCard();
   renderVoiceNotes();
   renderEvidence();
+  renderBattlePlans();
+  renderStole();
   renderPledge();
   renderCountdown();
   renderCheckin();
@@ -4579,9 +5029,9 @@ setInterval(function(){
 setInterval(function(){ checkMilestones(); checkChips(); checkLetters(); checkFitnessBadges(); checkSmokeBadges(); }, 60000);
 </script>
 <script>
-// PWA (v1.2): offline service worker + install prompt + tap-to-apply updates.
+// PWA (v1.3): offline service worker + install prompt + tap-to-apply updates.
 // Added 2026-10-20. Self-contained: does not modify the main app script.
-const SF_APP_VERSION='1.2';
+const SF_APP_VERSION='1.3';
 let sfReg=null, sfWaiting=null, sfReloading=false, sfPrompt=null;
 function sfShowBanner(){var b=document.getElementById('sfUpdateBanner'); if(b)b.style.display='block';}
 if('serviceWorker' in navigator){
