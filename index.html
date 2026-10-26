@@ -486,6 +486,19 @@
       <div id="stoleList" class="mt12"></div>
     </div>
 
+    <div class="card" id="refusalCard">
+      <h2>&#x1F5E3;&#xFE0F; Refusal reps</h2>
+      <p class="muted" style="margin-top:0;">Rehearse the hard lines now, so they're easy later.</p>
+      <div id="refusalPractice"></div>
+      <div class="row mt12">
+        <button id="refusalRun" class="small">Run a rep</button>
+      </div>
+      <p class="muted mt8" id="refusalCount" style="margin-bottom:0;"></p>
+      <h3 style="margin:16px 0 8px;">My lines</h3>
+      <p class="muted" id="refusalBankMsg" style="margin:0 0 8px;"></p>
+      <div id="refusalBank" class="mt8"></div>
+    </div>
+
     <div class="card">
       <h2>&#x1F4CA; 7-day rhythm</h2>
       <div class="rhythm" id="rhythmStrip"></div>
@@ -897,6 +910,7 @@
       <div class="row mt12" style="justify-content:center;">
         <button id="sosVoiceBtn" class="small">&#x1F399;&#xFE0F; Hear from sober you</button>
         <button id="sosProofBtn" class="small ghost">&#x1F4F8; See your proof</button>
+        <button id="sosRepsBtn" class="small ghost">&#x1F5E3;&#xFE0F; Practice your lines</button>
       </div>
       <p class="muted mt8" id="sosMediaMsg" style="margin-bottom:0;"></p>
     </div>
@@ -1325,6 +1339,7 @@ function defaultState(){
     slips:[], futureLetters:[], promptIdx:0, reduceMotion:null, textSize:"normal",
     voiceNotes:[], evidence:[],
     battlePlans:[], stoleList:[],
+    refusalLines:[], refusalRepCount:0,
     activities:[], fitnessGoals:{daysPerWeek:0,distPerWeek:0}, distUnit:"mi",
     smoke:defaultSmoke()
   };
@@ -2757,6 +2772,139 @@ $("photoPickBtn").addEventListener("click", function(){
   if(item && p) item.photoId = p.id;
   photoPickFor = null;
   saveState(); renderStole(); closePhoto();
+});
+
+/* ============ REFUSAL REPS ============
+   Rehearse the hard lines BEFORE they count, so the real moment feels
+   familiar. Scenarios are dealt from a shuffled deck — no repeats until
+   the deck is exhausted. Banked lines are the user's own words. */
+const REFUSAL_SCENARIOS = [
+  {say:"Just one, it's a celebration", lines:["I'm celebrating too — just with something that won't wreck my morning.","Nah, I'm good. The good part of tonight isn't in a glass."]},
+  {say:"Don't be boring", lines:["Boring is underrated — I remember all my boring nights, and I love them.","I'll be the boring one who drives everyone home safe."]},
+  {say:"Come on, one won't hurt", lines:["One always did — that's why I stopped counting at one.","I'm not negotiating with my old self tonight."]},
+  {say:"You used to be fun", lines:["I used to be a mess too. Fun got an upgrade.","Still fun — just fun I can remember tomorrow."]},
+  {say:"It's free, I'm buying", lines:["Appreciate it, but my freedom cost more than that drink.","Get me a sparkling water and we're square."]},
+  {say:"Everyone else is drinking", lines:["Everyone else can. I'm good over here.","I'm the designated memory-keeper tonight."]},
+  {say:"You can stop after one", lines:["Famous last words — mine, many times. Not tonight.","I tried that script. It never ended at one."]},
+  {say:"It's just beer", lines:["Beer was never 'just' anything for me. I'm out.","Just beer, just one, just tonight — I've heard all the 'justs'."]},
+  {say:"Loosen up, it's Friday", lines:["I'm plenty loose — ask me after the walk I took this morning.","Friday's better when Saturday isn't ruined."]},
+  {say:"One toast won't kill you", lines:["It won't kill me, but it'll cost me a morning I like. I'll toast with this.","I'll raise my glass — it's just got soda in it."]},
+  {say:"You're no fun anymore", lines:["Fun's still here, it's just not poured anymore.","Weird — my family says I'm more fun now."]},
+  {say:"Nobody will know", lines:["I'd know. That's the only person I'm answering to.","I'd know by 6 AM. Pass."]}
+];
+let refusalDeck = [];
+let refusalCurrent = null;
+let refusalSelected = "";
+let refusalSession = 0;
+function refusalShuffle(){
+  refusalDeck = REFUSAL_SCENARIOS.map(function(_, i){ return i; });
+  for(let i = refusalDeck.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    const t = refusalDeck[i]; refusalDeck[i] = refusalDeck[j]; refusalDeck[j] = t;
+  }
+}
+function refusalNext(){
+  if(!refusalDeck.length) refusalShuffle();
+  refusalCurrent = REFUSAL_SCENARIOS[refusalDeck.pop()];
+  refusalSelected = "";
+}
+function renderRefusal(){
+  $("refusalCount").textContent = "Reps banked this session: " + refusalSession + " · All time: " + (state.refusalRepCount || 0);
+  const prac = $("refusalPractice");
+  prac.innerHTML = "";
+  if(!refusalCurrent){
+    const p = document.createElement("p");
+    p.className = "muted"; p.style.margin = "0";
+    p.textContent = "Tap \u201cRun a rep\u201d and practice answering a pressure line — then bank the comeback that sounds like you.";
+    prac.appendChild(p);
+  } else {
+    const q = document.createElement("div");
+    q.className = "item";
+    const qb = document.createElement("div");
+    qb.innerHTML = "<b>When they say:</b> \u201c" + esc(refusalCurrent.say) + "\u201d";
+    q.appendChild(qb);
+    prac.appendChild(q);
+    const chips = document.createElement("div");
+    chips.className = "chips mt8";
+    refusalCurrent.lines.forEach(function(line){
+      const b = document.createElement("button");
+      b.type = "button"; b.textContent = line;
+      if(refusalSelected === line) b.classList.add("on");
+      b.addEventListener("click", function(){
+        refusalSelected = line;
+        const ci = $("refusalCustom");
+        if(ci) ci.value = "";
+        renderRefusal();
+      });
+      chips.appendChild(b);
+    });
+    prac.appendChild(chips);
+    const inp = document.createElement("input");
+    inp.id = "refusalCustom";
+    inp.placeholder = "Or write your own comeback\u2026";
+    inp.maxLength = 160;
+    inp.style.cssText = "width:100%; margin-top:10px;";
+    inp.addEventListener("input", function(){
+      refusalSelected = "";
+      const cs = chips.querySelectorAll("button");
+      for(let i = 0; i < cs.length; i++) cs[i].classList.remove("on");
+    });
+    prac.appendChild(inp);
+    const acts = document.createElement("div");
+    acts.className = "row mt12";
+    const bankBtn = document.createElement("button");
+    bankBtn.className = "small"; bankBtn.textContent = "Bank this line";
+    bankBtn.addEventListener("click", function(){
+      const ci = $("refusalCustom");
+      const custom = ci ? ci.value.trim() : "";
+      const line = custom || refusalSelected;
+      if(!line) return;
+      state.refusalLines.push({id:uid(), scenario:refusalCurrent.say, line:line, ts:Date.now()});
+      state.refusalRepCount = (state.refusalRepCount || 0) + 1;
+      refusalSession++;
+      saveState();
+      refusalNext();
+      renderRefusal();
+    });
+    const skipBtn = document.createElement("button");
+    skipBtn.className = "small ghost"; skipBtn.textContent = "Skip";
+    skipBtn.addEventListener("click", function(){ refusalNext(); renderRefusal(); });
+    acts.appendChild(bankBtn); acts.appendChild(skipBtn);
+    prac.appendChild(acts);
+  }
+  const bank = $("refusalBank");
+  bank.innerHTML = "";
+  const msg = $("refusalBankMsg");
+  if(!state.refusalLines.length){
+    msg.textContent = "Your bank is empty — run a rep and bank a line that sounds like you.";
+  } else {
+    msg.textContent = "";
+    state.refusalLines.slice().reverse().forEach(function(it){
+      const row = document.createElement("div");
+      row.className = "item";
+      const a = document.createElement("div");
+      a.className = "muted";
+      a.innerHTML = "When they say: \u201c" + esc(it.scenario) + "\u201d";
+      const b = document.createElement("div");
+      b.innerHTML = "<b>You say:</b> \u201c" + esc(it.line) + "\u201d";
+      const del = document.createElement("button");
+      del.className = "small danger"; del.textContent = "Delete";
+      del.style.marginTop = "8px";
+      del.addEventListener("click", function(){
+        if(!confirm("Remove this line from your bank?")) return;
+        state.refusalLines = state.refusalLines.filter(function(q){ return q.id !== it.id; });
+        saveState(); renderRefusal();
+      });
+      row.appendChild(a); row.appendChild(b); row.appendChild(del);
+      bank.appendChild(row);
+    });
+  }
+}
+$("refusalRun").addEventListener("click", function(){ refusalNext(); renderRefusal(); });
+$("sosRepsBtn").addEventListener("click", function(){
+  switchTab("journey");
+  const card = $("refusalCard");
+  if(card && card.scrollIntoView) card.scrollIntoView({behavior: state.reduceMotion ? "auto" : "smooth", block:"start"});
 });
 
 /* ============ CONFETTI ============ */
@@ -4988,6 +5136,7 @@ function renderAll(){
   renderEvidence();
   renderBattlePlans();
   renderStole();
+  renderRefusal();
   renderPledge();
   renderCountdown();
   renderCheckin();
@@ -5029,9 +5178,9 @@ setInterval(function(){
 setInterval(function(){ checkMilestones(); checkChips(); checkLetters(); checkFitnessBadges(); checkSmokeBadges(); }, 60000);
 </script>
 <script>
-// PWA (v1.3): offline service worker + install prompt + tap-to-apply updates.
+// PWA (v1.4): offline service worker + install prompt + tap-to-apply updates.
 // Added 2026-10-20. Self-contained: does not modify the main app script.
-const SF_APP_VERSION='1.3';
+const SF_APP_VERSION='1.4';
 let sfReg=null, sfWaiting=null, sfReloading=false, sfPrompt=null;
 function sfShowBanner(){var b=document.getElementById('sfUpdateBanner'); if(b)b.style.display='block';}
 if('serviceWorker' in navigator){
