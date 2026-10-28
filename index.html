@@ -1000,6 +1000,13 @@
       <button id="mtgAdd" class="mt12" style="width:100%;">Log meeting</button>
     </div>
 
+    <div class="card" id="pocketCard">
+      <h2>&#x1FA91; Pocket Meeting</h2>
+      <p class="muted" style="margin-top:0;">A 10-minute meeting you can run anywhere — no room, no ride, just you.</p>
+      <p class="muted" id="pocketLast" style="margin-top:0;"></p>
+      <button id="pocketOpen" style="width:100%;">Start a meeting</button>
+    </div>
+
     <div class="card">
       <h2>&#x1F4CB; Meeting log</h2>
       <div id="mtgList"></div>
@@ -1281,6 +1288,19 @@
   </div>
 </div>
 
+<!-- POCKET MEETING OVERLAY -->
+<div id="pocketOverlay" class="overlay hidden">
+  <div class="sheet" style="text-align:left;">
+    <div id="pocketBody"></div>
+    <div class="tapedots" id="pocketDots"></div>
+    <div class="row mt12" style="justify-content:space-between;">
+      <button id="pocketBack" class="small ghost">Back</button>
+      <button id="pocketClose" class="small ghost">Close</button>
+      <button id="pocketNext" class="small">Next</button>
+    </div>
+  </div>
+</div>
+
 <!-- PROGRESS REPORT OVERLAY -->
 <div id="reportOverlay" class="overlay hidden">
   <div class="sheet" style="text-align:left;">
@@ -1340,6 +1360,7 @@ function defaultState(){
     voiceNotes:[], evidence:[],
     battlePlans:[], stoleList:[],
     refusalLines:[], refusalRepCount:0,
+    pocketIdx:0,
     activities:[], fitnessGoals:{daysPerWeek:0,distPerWeek:0}, distUnit:"mi",
     smoke:defaultSmoke()
   };
@@ -2052,6 +2073,7 @@ document.addEventListener("keydown", function(e){
   if(!$("storyOverlay").classList.contains("hidden")) closeStory();
   else if(!$("tapeOverlay").classList.contains("hidden")) closeTape();
   else if(!$("photoOverlay").classList.contains("hidden")) closePhoto();
+  else if(!$("pocketOverlay").classList.contains("hidden")) closePocket();
 });
 
 /* ============ SOS MEDIA (shared status line) ============ */
@@ -3371,7 +3393,7 @@ function renderMeetings(){
   state.meetings.slice().sort(function(a,b){ return b.date < a.date ? -1 : 1; }).forEach(function(m){
     const div = document.createElement("div");
     div.className = "item";
-    div.innerHTML = '<div class="meta">' + esc(fmtDate(m.date)) + " \u2022 " + (m.mode === "zoom" ? "Zoom" : "In person") + "</div>" +
+    div.innerHTML = '<div class="meta">' + esc(fmtDate(m.date)) + " \u2022 " + (m.mode === "zoom" ? "Zoom" : m.mode === "self" ? "Self-led" : "In person") + "</div>" +
       "<div style='font-weight:700;'>" + esc(m.name) + "</div>" +
       (m.notes ? "<div class='muted'>" + esc(m.notes) + "</div>" : "");
     const acts = document.createElement("div");
@@ -3393,6 +3415,131 @@ $("mtgAdd").addEventListener("click", function(){
   $("mtgNotes").value = "";
   setMtgMode("zoom");
   saveState(); renderMeetings(); checkBadges();
+});
+
+/* ============ POCKET MEETING (self-led, ~10 min) ============
+   Original readings only — written for this app, in the spirit of
+   recovery meetings. No AA literature is quoted here. Timers are
+   gentle guides: Next is always available, nothing forces waiting. */
+const POCKET_READINGS = [
+  "Welcome. You showed up \u2014 that\u2019s the whole meeting, really. For the next ten minutes, there\u2019s nowhere else you need to be and nothing else you need to fix. Just breathe, be honest, and let the day be the day.",
+  "This is a small room with one chair in it, and it\u2019s yours. You don\u2019t have to have the right words. You only have to be willing to sit still long enough to hear your own thoughts.",
+  "Before anything else: you are here, and you are sober, and both of those things are worth noticing. Ten minutes. No performance, no audience. Just a pause, on purpose.",
+  "Meetings work because people keep coming back \u2014 even when it\u2019s hard, especially when it\u2019s hard. Right now, coming back looks like this: ten quiet minutes with yourself.",
+  "Take a breath. Let the shoulders drop. Whatever today has been so far, it brought you here, and here is a fine place to start again."
+];
+const POCKET_PROMPTS = [
+  "What are you carrying today?",
+  "Where did you need help this week?",
+  "What\u2019s one thing you\u2019re glad you did sober?",
+  "What would you tell someone on day one?",
+  "What part of today felt hardest, and what got you through it?",
+  "What\u2019s one small thing you want tomorrow to hold?"
+];
+const POCKET_CLOSINGS = [
+  "That\u2019s the meeting. You showed up for yourself today, and that counts \u2014 it always counts. Keep the next hour simple, and the next one after that. One day at a time.",
+  "Ten minutes, and you used them well. Carry one thing from this meeting into the rest of your day \u2014 just one. The rest can wait.",
+  "You came, you sat, you were honest. That\u2019s enough for today. Go gently, and remember: you don\u2019t have to do this alone, even when you\u2019re on your own."
+];
+let pocketSteps = null, pocketStep = 0;
+let pocketShareSaved = false, pocketGratSaved = false, pocketCounted = false, pocketConfettiShown = false;
+function buildPocketSteps(){
+  const pi = state.pocketIdx || 0;
+  return [
+    {kind:"open", text:POCKET_READINGS[pi % POCKET_READINGS.length]},
+    {kind:"share", prompt:POCKET_PROMPTS[pi % POCKET_PROMPTS.length]},
+    {kind:"grat"},
+    {kind:"close", text:POCKET_CLOSINGS[pi % POCKET_CLOSINGS.length]},
+    {kind:"done"}
+  ];
+}
+function renderPocketStep(){
+  const st = pocketSteps[pocketStep];
+  const body = $("pocketBody");
+  if(st.kind === "open"){
+    body.innerHTML = '<p class="muted center">Opening \u00b7 about a minute</p><h2 class="center">Welcome</h2><p style="white-space:pre-wrap;">' + esc(st.text) + '</p><p class="muted center">Take a minute with this. Read it slowly \u2014 twice, if you like.</p>';
+  } else if(st.kind === "share"){
+    body.innerHTML = '<p class="muted center">Sharing \u00b7 about four minutes</p><h2 class="center">Sharing</h2><p style="font-weight:700;">' + esc(st.prompt) + '</p><textarea id="pocketShareText" placeholder="Say it here, if you want to \u2014 or just think it through..."></textarea><div class="row mt12"><button id="pocketSaveShare" class="small">' + (pocketShareSaved ? "Saved \u2713" : "Save this as a journal entry") + '</button></div><p class="muted">Saving is optional. Nothing here leaves this app.</p>';
+  } else if(st.kind === "grat"){
+    body.innerHTML = '<p class="muted center">Gratitude \u00b7 about two minutes</p><h2 class="center">Three good things</h2><p class="muted">Small counts. A clear morning counts.</p>' +
+      '<label class="lbl">1</label><input id="pocketGrat1" placeholder="e.g. Woke up clear-headed">' +
+      '<label class="lbl">2</label><input id="pocketGrat2" placeholder="e.g. Coffee with someone I like">' +
+      '<label class="lbl">3</label><input id="pocketGrat3" placeholder="e.g. The walk this morning">' +
+      '<div class="row mt12"><button id="pocketAddGrat" class="small">' + (pocketGratSaved ? "Added \u2713" : "Add these to today\u2019s gratitude") + '</button></div>';
+  } else if(st.kind === "close"){
+    body.innerHTML = '<p class="muted center">Closing \u00b7 about a minute</p><h2 class="center">Closing</h2><p style="white-space:pre-wrap;">' + esc(st.text) + '</p>';
+  } else {
+    body.innerHTML = '<h2 class="center">Meeting complete</h2><p class="center">Ten minutes, all yours \u2014 and you showed up.</p><p class="muted center">Count it in your meeting log, or just let it stand on its own.</p><div class="row mt12" style="justify-content:center;"><button id="pocketCount" class="small">' + (pocketCounted ? "Counted \u2713" : "Count this in my meeting log") + '</button></div>';
+  }
+  const dots = $("pocketDots");
+  if(st.kind === "done"){ dots.innerHTML = ""; }
+  else {
+    let d = "";
+    for(let i = 0; i < 4; i++) d += '<span class="' + (i === pocketStep ? "on" : "") + '"></span>';
+    dots.innerHTML = d;
+  }
+  $("pocketBack").classList.toggle("hidden", pocketStep === 0);
+  $("pocketNext").classList.toggle("hidden", st.kind === "done");
+}
+function openPocket(){
+  state.pocketIdx = (state.pocketIdx || 0) + 1;
+  saveState();
+  pocketSteps = buildPocketSteps();
+  pocketStep = 0;
+  pocketShareSaved = false; pocketGratSaved = false; pocketCounted = false; pocketConfettiShown = false;
+  renderPocketStep();
+  $("pocketOverlay").classList.remove("hidden");
+}
+function closePocket(){
+  $("pocketOverlay").classList.add("hidden");
+}
+function renderPocket(){
+  const el = $("pocketLast");
+  if(!el) return;
+  const mine = state.meetings.filter(function(m){ return m.name === "Pocket Meeting (self-led)"; });
+  if(!mine.length){ el.textContent = "No pocket meetings yet \u2014 your first one is ten minutes away."; return; }
+  const last = mine.map(function(m){ return m.date; }).sort().pop();
+  el.textContent = "Last pocket meeting: " + fmtDate(last) + " (" + mine.length + " so far).";
+}
+$("pocketOpen").addEventListener("click", openPocket);
+$("pocketClose").addEventListener("click", closePocket);
+$("pocketBack").addEventListener("click", function(){ if(pocketStep > 0){ pocketStep--; renderPocketStep(); } });
+$("pocketNext").addEventListener("click", function(){
+  if(pocketSteps && pocketStep < pocketSteps.length - 1){
+    pocketStep++;
+    if(pocketSteps[pocketStep].kind === "done" && !pocketConfettiShown){ pocketConfettiShown = true; launchConfetti(3200); }
+    renderPocketStep();
+  }
+});
+$("pocketBody").addEventListener("click", function(e){
+  const t = e.target;
+  if(!t || !t.id) return;
+  if(t.id === "pocketSaveShare"){
+    if(pocketShareSaved) return;
+    const v = $("pocketShareText").value.trim();
+    if(!v) return;
+    state.journal.push({id:uid(), date:todayKey(), title:"Pocket Meeting", body:v});
+    pocketShareSaved = true;
+    saveState(); renderJournal();
+    t.textContent = "Saved \u2713";
+  } else if(t.id === "pocketAddGrat"){
+    if(pocketGratSaved) return;
+    let n = 0;
+    ["pocketGrat1", "pocketGrat2", "pocketGrat3"].forEach(function(id){
+      const v = $(id).value.trim();
+      if(v){ state.gratitude.push({id:uid(), date:todayKey(), text:v.slice(0, 200)}); n++; }
+    });
+    if(!n) return;
+    pocketGratSaved = true;
+    saveState(); renderGratitude(); renderJournal();
+    t.textContent = "Added \u2713";
+  } else if(t.id === "pocketCount"){
+    if(pocketCounted) return;
+    state.meetings.push({id:uid(), date:todayKey(), name:"Pocket Meeting (self-led)", mode:"self", notes:""});
+    pocketCounted = true;
+    saveState(); renderMeetings(); checkBadges(); renderPocket();
+    t.textContent = "Counted \u2713";
+  }
 });
 
 /* ============ SETTINGS ============ */
@@ -5148,6 +5295,7 @@ function renderAll(){
   renderJournal();
   renderGratitude();
   renderMeetings();
+  renderPocket();
   renderFitness();
   renderSmoke();
   renderPatterns();
@@ -5178,9 +5326,9 @@ setInterval(function(){
 setInterval(function(){ checkMilestones(); checkChips(); checkLetters(); checkFitnessBadges(); checkSmokeBadges(); }, 60000);
 </script>
 <script>
-// PWA (v1.4): offline service worker + install prompt + tap-to-apply updates.
+// PWA (v1.5): offline service worker + install prompt + tap-to-apply updates.
 // Added 2026-10-20. Self-contained: does not modify the main app script.
-const SF_APP_VERSION='1.4';
+const SF_APP_VERSION='1.5';
 let sfReg=null, sfWaiting=null, sfReloading=false, sfPrompt=null;
 function sfShowBanner(){var b=document.getElementById('sfUpdateBanner'); if(b)b.style.display='block';}
 if('serviceWorker' in navigator){
