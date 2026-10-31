@@ -3418,48 +3418,76 @@ $("mtgAdd").addEventListener("click", function(){
 });
 
 /* ============ POCKET MEETING (self-led, ~10 min) ============
-   Original readings only — written for this app, in the spirit of
-   recovery meetings. No AA literature is quoted here. Timers are
-   gentle guides: Next is always available, nothing forces waiting. */
+   Guided flow: a short opening reflection, a back-and-forth
+   conversation (one question at a time, with a reflective echo),
+   gratitude, then a closing with one takeaway to carry out.
+   Readings are original, written for this app in the spirit of
+   recovery meetings. No AA literature is quoted here. The
+   conversation is template-based and runs entirely on the phone:
+   nothing typed here is sent anywhere. Timers are gentle guides:
+   Next is always available, nothing forces waiting. */
 const POCKET_READINGS = [
-  "Welcome. You showed up \u2014 that\u2019s the whole meeting, really. For the next ten minutes, there\u2019s nowhere else you need to be and nothing else you need to fix. Just breathe, be honest, and let the day be the day.",
-  "This is a small room with one chair in it, and it\u2019s yours. You don\u2019t have to have the right words. You only have to be willing to sit still long enough to hear your own thoughts.",
-  "Before anything else: you are here, and you are sober, and both of those things are worth noticing. Ten minutes. No performance, no audience. Just a pause, on purpose.",
-  "Meetings work because people keep coming back \u2014 even when it\u2019s hard, especially when it\u2019s hard. Right now, coming back looks like this: ten quiet minutes with yourself.",
-  "Take a breath. Let the shoulders drop. Whatever today has been so far, it brought you here, and here is a fine place to start again."
+  "Start with the truth, even a small one. You do not have to fix anything in the next ten minutes. You only have to name what is real. Honesty is the door, and everything else walks through it.",
+  "Willingness does not mean feeling ready. It means sitting down anyway, even when part of you would rather not. If you are here, you are already willing enough.",
+  "Forget the whole week. Forget forever. There is only today, and today is still young enough to go well. Ten minutes now, one hour next. That is how a day gets built.",
+  "Before you take stock of what is wrong, take stock of what is still here: a clear head, a roof, a person who picks up the phone. Gratitude is not pretending things are perfect. It is noticing what survived.",
+  "Some things today are yours to change, and some are not, and telling them apart is the whole job. Breathe in, let your shoulders drop, and leave the rest where it is for ten minutes.",
+  "Amends start before any apology. They start with getting honest about who you hurt and how. You do not have to make the call today. Just be willing to see it clearly.",
+  "You do not need a perfect meeting, a perfect day, or a perfect record. You need the next honest thing, done as well as you can. Progress is quiet like that. It rarely announces itself.",
+  "Nobody gets through this alone, and asking for help is not weakness. It is the oldest move in the book. If something is heavy today, saying so out loud is already the first half of putting it down."
 ];
-const POCKET_PROMPTS = [
-  "What are you carrying today?",
-  "Where did you need help this week?",
-  "What\u2019s one thing you\u2019re glad you did sober?",
-  "What would you tell someone on day one?",
-  "What part of today felt hardest, and what got you through it?",
-  "What\u2019s one small thing you want tomorrow to hold?"
+const POCKET_TALK_QUESTIONS = [
+  "What is weighing on you today?",
+  "What went right today, even something small?",
+  "What do you need to be honest about right now?",
+  "What do you need help with that you have not asked for yet?"
 ];
+const POCKET_TALK_ECHOES = [
+  'You said: "{t}". Hearing it in your own words matters. That is the honest part, done.',
+  '"{t}". Thank you for naming that. Sitting with it is the work, and fixing it on the spot is not required.',
+  'You put it this way: "{t}". That is a clear-eyed look at your own day, and that is no small thing.',
+  '"{t}". Noted. Notice how it feels to have said it out loud. That is the meeting doing its job.'
+];
+const POCKET_TALK_QUIET = "You sat with that one quietly. That counts too.";
 const POCKET_CLOSINGS = [
   "That\u2019s the meeting. You showed up for yourself today, and that counts \u2014 it always counts. Keep the next hour simple, and the next one after that. One day at a time.",
   "Ten minutes, and you used them well. Carry one thing from this meeting into the rest of your day \u2014 just one. The rest can wait.",
   "You came, you sat, you were honest. That\u2019s enough for today. Go gently, and remember: you don\u2019t have to do this alone, even when you\u2019re on your own."
 ];
 let pocketSteps = null, pocketStep = 0;
-let pocketShareSaved = false, pocketGratSaved = false, pocketCounted = false, pocketConfettiShown = false;
+let pocketGratSaved = false, pocketCounted = false, pocketConfettiShown = false;
+let pocketTalk = [], pocketTalkDone = false, pocketTalkSaved = false, pocketTakeawaySaved = false;
 function buildPocketSteps(){
   const pi = state.pocketIdx || 0;
   return [
     {kind:"open", text:POCKET_READINGS[pi % POCKET_READINGS.length]},
-    {kind:"share", prompt:POCKET_PROMPTS[pi % POCKET_PROMPTS.length]},
+    {kind:"talk"},
     {kind:"grat"},
     {kind:"close", text:POCKET_CLOSINGS[pi % POCKET_CLOSINGS.length]},
     {kind:"done"}
   ];
 }
+function pocketTalkHTML(){
+  let h = '<p class="muted center">A conversation \u00b7 about five minutes</p><h2 class="center">Talk it through</h2><p class="muted">One question at a time. Answer in a few words or a few lines, or just think it through and move on. Nothing here leaves this app.</p>';
+  pocketTalk.forEach(function(ex){
+    h += '<p style="font-weight:700;margin-top:14px;">' + esc(ex.q) + '</p>';
+    if(ex.a){ h += '<p style="white-space:pre-wrap;">' + esc(ex.a) + '</p>'; }
+    h += '<p class="muted" style="white-space:pre-wrap;">' + esc(ex.echo) + '</p>';
+  });
+  if(!pocketTalkDone){
+    h += '<p style="font-weight:700;margin-top:14px;">' + esc(POCKET_TALK_QUESTIONS[pocketTalk.length]) + '</p><textarea id="pocketTalkText" placeholder="Say it here, if you want to \u2014 or just think it through..."></textarea><div class="row mt12"><button id="pocketTalkShare" class="small">Share</button></div>';
+  } else {
+    h += '<p class="center" style="margin-top:14px;">Thank you for saying all of that out loud, even to yourself.</p><div class="row mt12" style="justify-content:center;"><button id="pocketSaveTalk" class="small">' + (pocketTalkSaved ? "Saved \u2713" : "Save this conversation as a journal entry") + '</button></div><p class="muted center">Saving is optional.</p>';
+  }
+  return h;
+}
 function renderPocketStep(){
   const st = pocketSteps[pocketStep];
   const body = $("pocketBody");
   if(st.kind === "open"){
-    body.innerHTML = '<p class="muted center">Opening \u00b7 about a minute</p><h2 class="center">Welcome</h2><p style="white-space:pre-wrap;">' + esc(st.text) + '</p><p class="muted center">Take a minute with this. Read it slowly \u2014 twice, if you like.</p>';
-  } else if(st.kind === "share"){
-    body.innerHTML = '<p class="muted center">Sharing \u00b7 about four minutes</p><h2 class="center">Sharing</h2><p style="font-weight:700;">' + esc(st.prompt) + '</p><textarea id="pocketShareText" placeholder="Say it here, if you want to \u2014 or just think it through..."></textarea><div class="row mt12"><button id="pocketSaveShare" class="small">' + (pocketShareSaved ? "Saved \u2713" : "Save this as a journal entry") + '</button></div><p class="muted">Saving is optional. Nothing here leaves this app.</p>';
+    body.innerHTML = '<p class="muted center">Opening \u00b7 about a minute</p><h2 class="center">Welcome</h2><p style="white-space:pre-wrap;">' + esc(st.text) + '</p><p class="muted center">Take a minute with this. Read it slowly \u2014 twice, if you like.</p><p class="muted center">A short reflection written for this app, in the spirit of recovery meetings, not a quotation from AA literature.</p>';
+  } else if(st.kind === "talk"){
+    body.innerHTML = pocketTalkHTML();
   } else if(st.kind === "grat"){
     body.innerHTML = '<p class="muted center">Gratitude \u00b7 about two minutes</p><h2 class="center">Three good things</h2><p class="muted">Small counts. A clear morning counts.</p>' +
       '<label class="lbl">1</label><input id="pocketGrat1" placeholder="e.g. Woke up clear-headed">' +
@@ -3467,7 +3495,7 @@ function renderPocketStep(){
       '<label class="lbl">3</label><input id="pocketGrat3" placeholder="e.g. The walk this morning">' +
       '<div class="row mt12"><button id="pocketAddGrat" class="small">' + (pocketGratSaved ? "Added \u2713" : "Add these to today\u2019s gratitude") + '</button></div>';
   } else if(st.kind === "close"){
-    body.innerHTML = '<p class="muted center">Closing \u00b7 about a minute</p><h2 class="center">Closing</h2><p style="white-space:pre-wrap;">' + esc(st.text) + '</p>';
+    body.innerHTML = '<p class="muted center">Closing \u00b7 about a minute</p><h2 class="center">Closing</h2><p style="white-space:pre-wrap;">' + esc(st.text) + '</p><p style="font-weight:700;margin-top:14px;">One thing to carry out the door</p><input id="pocketTakeaway" placeholder="e.g. Text Ed back tonight"><div class="row mt12"><button id="pocketSaveTakeaway" class="small">' + (pocketTakeawaySaved ? "Saved \u2713" : "Save this as a journal entry") + '</button></div><p class="muted">Saving is optional.</p>';
   } else {
     body.innerHTML = '<h2 class="center">Meeting complete</h2><p class="center">Ten minutes, all yours \u2014 and you showed up.</p><p class="muted center">Count it in your meeting log, or just let it stand on its own.</p><div class="row mt12" style="justify-content:center;"><button id="pocketCount" class="small">' + (pocketCounted ? "Counted \u2713" : "Count this in my meeting log") + '</button></div>';
   }
@@ -3486,7 +3514,7 @@ function openPocket(){
   saveState();
   pocketSteps = buildPocketSteps();
   pocketStep = 0;
-  pocketShareSaved = false; pocketGratSaved = false; pocketCounted = false; pocketConfettiShown = false;
+  pocketGratSaved = false; pocketCounted = false; pocketConfettiShown = false; pocketTalk = []; pocketTalkDone = false; pocketTalkSaved = false; pocketTakeawaySaved = false;
   renderPocketStep();
   $("pocketOverlay").classList.remove("hidden");
 }
@@ -3514,12 +3542,29 @@ $("pocketNext").addEventListener("click", function(){
 $("pocketBody").addEventListener("click", function(e){
   const t = e.target;
   if(!t || !t.id) return;
-  if(t.id === "pocketSaveShare"){
-    if(pocketShareSaved) return;
-    const v = $("pocketShareText").value.trim();
+  if(t.id === "pocketTalkShare"){
+    const v = $("pocketTalkText").value.trim();
+    const q = POCKET_TALK_QUESTIONS[pocketTalk.length];
+    let echo;
+    if(v){ echo = POCKET_TALK_ECHOES[pocketTalk.length % POCKET_TALK_ECHOES.length].replace("{t}", v.slice(0, 300)); }
+    else { echo = POCKET_TALK_QUIET; }
+    pocketTalk.push({q:q, a:v, echo:echo});
+    if(pocketTalk.length >= POCKET_TALK_QUESTIONS.length) pocketTalkDone = true;
+    renderPocketStep();
+  } else if(t.id === "pocketSaveTalk"){
+    if(pocketTalkSaved) return;
+    let b = "Pocket Meeting conversation";
+    pocketTalk.forEach(function(ex){ b += "\n\n" + ex.q + "\n" + (ex.a || "(sat with it quietly)"); });
+    state.journal.push({id:uid(), date:todayKey(), title:"Pocket Meeting", body:b});
+    pocketTalkSaved = true;
+    saveState(); renderJournal();
+    t.textContent = "Saved \u2713";
+  } else if(t.id === "pocketSaveTakeaway"){
+    if(pocketTakeawaySaved) return;
+    const v = $("pocketTakeaway").value.trim();
     if(!v) return;
-    state.journal.push({id:uid(), date:todayKey(), title:"Pocket Meeting", body:v});
-    pocketShareSaved = true;
+    state.journal.push({id:uid(), date:todayKey(), title:"Pocket Meeting takeaway", body:v});
+    pocketTakeawaySaved = true;
     saveState(); renderJournal();
     t.textContent = "Saved \u2713";
   } else if(t.id === "pocketAddGrat"){
@@ -5326,9 +5371,9 @@ setInterval(function(){
 setInterval(function(){ checkMilestones(); checkChips(); checkLetters(); checkFitnessBadges(); checkSmokeBadges(); }, 60000);
 </script>
 <script>
-// PWA (v1.5): offline service worker + install prompt + tap-to-apply updates.
+// PWA (v1.6): offline service worker + install prompt + tap-to-apply updates.
 // Added 2026-10-20. Self-contained: does not modify the main app script.
-const SF_APP_VERSION='1.5';
+const SF_APP_VERSION='1.6';
 let sfReg=null, sfWaiting=null, sfReloading=false, sfPrompt=null;
 function sfShowBanner(){var b=document.getElementById('sfUpdateBanner'); if(b)b.style.display='block';}
 if('serviceWorker' in navigator){
