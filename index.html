@@ -253,6 +253,13 @@
     border-radius:10px; overflow:hidden; line-height:0;}
   .evgrid > button img{width:100%; height:88px; object-fit:cover; display:block;}
   .evbig{width:100%; border-radius:12px; display:block; border:1px solid var(--line);}
+  /* daily photo timeline */
+  .dpstrip{display:flex; gap:8px; overflow-x:auto; scroll-snap-type:x mandatory; padding:2px 2px 8px;}
+  .dpstrip > button{flex:0 0 auto; padding:0; background:var(--bg2); border:1px solid var(--line); box-shadow:none;
+    border-radius:10px; overflow:hidden; line-height:0; scroll-snap-align:start; width:96px;}
+  .dpstrip > button img{width:96px; height:96px; object-fit:cover; display:block;}
+  .dpstrip > button .dplab{display:block; font-size:11px; color:var(--muted); line-height:1.4; padding:4px 2px;}
+  .dpbig{width:100%; border-radius:12px; display:block; border:1px solid var(--line);}
   .rectime{font-variant-numeric:tabular-nums; font-weight:700; color:var(--warn);}
   @media print{
     body{padding-bottom:0;}
@@ -323,6 +330,14 @@
       <h2>&#x2694;&#xFE0F; Next battle plan</h2>
       <p class="muted" style="margin:0;" id="bpTodayText"></p>
       <button id="bpTodayOpen" class="small mt8">Open plan</button>
+    </div>
+
+    <div class="card hidden" id="focusCard">
+      <h2>&#x1F3AF; This week's focus</h2>
+      <p class="muted" style="margin:0;" id="focusText"></p>
+      <div class="row mt8" style="justify-content:center;">
+        <button id="focusDismiss" class="small ghost">Dismiss</button>
+      </div>
     </div>
 
     <div class="card">
@@ -497,6 +512,30 @@
       <h3 style="margin:16px 0 8px;">My lines</h3>
       <p class="muted" id="refusalBankMsg" style="margin:0 0 8px;"></p>
       <div id="refusalBank" class="mt8"></div>
+    </div>
+
+    <div class="card" id="sundayCard">
+      <h2>&#x1FA9E; Sunday Review</h2>
+      <p class="muted" style="margin-top:0;">Your week, honestly — one lesson, one small change.</p>
+      <div class="row mt8">
+        <button id="sundayBuild" class="small">Build this week's review</button>
+      </div>
+      <p class="muted mt8" id="sundayMsg" style="margin-bottom:0;"></p>
+      <div id="sundayResult" class="mt12"></div>
+      <div id="sundayHistory" class="mt12"></div>
+    </div>
+
+    <div class="card" id="dailyPhotoCard">
+      <h2>&#x1F4F8; See yourself come back</h2>
+      <p class="muted" style="margin-top:0;">One photo a day. Watch yourself come back, frame by frame.</p>
+      <div id="dailyPhotoStrip" class="dpstrip"></div>
+      <div class="row mt8">
+        <button id="dailyPhotoAddBtn" class="small">Add today's photo</button>
+        <button id="dailyCompareBtn" class="small ghost hidden">First &#x2194; Latest</button>
+        <input type="file" id="dailyPhotoFile" accept="image/*" class="hidden">
+      </div>
+      <p class="muted mt8" id="dailyPhotoMsg" style="margin-bottom:0;"></p>
+      <p class="muted mt8" style="margin-bottom:0;">Timeline photos live in this browser only — they aren't part of the JSON backup in Settings, so they won't move to a new phone.</p>
     </div>
 
     <div class="card">
@@ -1332,6 +1371,20 @@
   </div>
 </div>
 
+<div id="dailyPhotoOverlay" class="overlay hidden">
+  <div class="sheet" style="text-align:left;">
+    <div id="dailyPhotoView"></div>
+    <div class="row mt12" style="justify-content:space-between;">
+      <button id="dailyPhotoPrev" class="small ghost">Prev</button>
+      <button id="dailyPhotoDelete" class="small danger">Delete photo</button>
+      <button id="dailyPhotoNext" class="small ghost">Next</button>
+    </div>
+    <div class="row mt8" style="justify-content:center;">
+      <button id="dailyPhotoClose" class="small ghost">Close</button>
+    </div>
+  </div>
+</div>
+
 <canvas id="confettiCanvas"></canvas>
 
 <script>
@@ -1361,6 +1414,7 @@ function defaultState(){
     battlePlans:[], stoleList:[],
     refusalLines:[], refusalRepCount:0,
     pocketIdx:0,
+    weeklyFocus:null, sundayReviews:[], dailyPhotos:[],
     activities:[], fitnessGoals:{daysPerWeek:0,distPerWeek:0}, distUnit:"mi",
     smoke:defaultSmoke()
   };
@@ -2073,6 +2127,7 @@ document.addEventListener("keydown", function(e){
   if(!$("storyOverlay").classList.contains("hidden")) closeStory();
   else if(!$("tapeOverlay").classList.contains("hidden")) closeTape();
   else if(!$("photoOverlay").classList.contains("hidden")) closePhoto();
+  else if(!$("dailyPhotoOverlay").classList.contains("hidden")) closeDailyPhoto();
   else if(!$("pocketOverlay").classList.contains("hidden")) closePocket();
 });
 
@@ -2416,6 +2471,310 @@ $("sosProofBtn").addEventListener("click", function(){
     return;
   }
   openPhoto(state.evidence.length - 1);
+});
+
+/* ============ SUNDAY REVIEW ============ */
+function sundayWeekKeys(){
+  const arr = [];
+  for(let i=6;i>=0;i--){ const d = new Date(); d.setDate(d.getDate()-i); arr.push(localKey(d)); }
+  return arr;
+}
+function sundayWeekStart(){ return sundayWeekKeys()[0]; }
+function avgNums(arr){
+  if(!arr.length) return null;
+  return arr.reduce(function(a,b){ return a+b; }, 0) / arr.length;
+}
+function fmtAvg(v){ return v == null ? "—" : (Math.round(v*10)/10).toString(); }
+const SUNDAY_TRIGGER_CHANGE = {
+  "Stress": "Take a 10-minute walk before your hardest hour, 3 days this week.",
+  "People": "Text your support person before the next gathering, not after.",
+  "Place": "Change one route or routine that walks you past the hard place.",
+  "Habit": "Swap one evening habit for a walk, 3 nights this week.",
+  "Emotion": "Write one line in the journal when the feeling hits, before deciding anything.",
+  "Other": "Name the moment out loud in your check-in note next time it comes up."
+};
+function computeSundayReview(){
+  const keys = sundayWeekKeys();
+  const logged = keys.map(function(k){ return state.checkins[k]; }).filter(Boolean);
+  const stats = {
+    days: logged.length,
+    sober: logged.filter(function(c){ return c.status === "sober"; }).length,
+    mood: avgNums(logged.map(function(c){ return c.mood; }).filter(function(v){ return v != null; })),
+    craving: avgNums(logged.map(function(c){ return c.craving; }).filter(function(v){ return v != null; })),
+    meetings: state.meetings.filter(function(m){ return keys.indexOf(m.date) !== -1; }).length,
+    wins: state.wins.filter(function(w){ return keys.indexOf(w.date) !== -1; }).length
+  };
+  if(logged.length < 3){
+    return {weekStart: keys[0], weekEnd: keys[6], stats: stats, thin: true, lesson: null, lessonKind: null, change: null};
+  }
+  const trigCounts = {};
+  logged.forEach(function(c){ (c.triggers || []).forEach(function(t){ trigCounts[t] = (trigCounts[t] || 0) + 1; }); });
+  let topTrig = null, topN = 0;
+  Object.keys(trigCounts).forEach(function(t){ if(trigCounts[t] > topN){ topN = trigCounts[t]; topTrig = t; } });
+  let sleepLesson = null;
+  const paired = keys.map(function(k){
+    const c = state.checkins[k], s = state.sleepLog[k];
+    if(!c || !s || c.craving == null || s.hours == null) return null;
+    return {short: s.hours < 7, craving: c.craving};
+  }).filter(Boolean);
+  if(paired.length >= 3){
+    const aS = avgNums(paired.filter(function(p){ return p.short; }).map(function(p){ return p.craving; }));
+    const aR = avgNums(paired.filter(function(p){ return !p.short; }).map(function(p){ return p.craving; }));
+    if(aS != null && aR != null && (aS - aR) >= 1){
+      sleepLesson = {text: "On short-sleep nights (under 7 hours), your cravings averaged " + fmtAvg(aS) + " versus " + fmtAvg(aR) + " on rested nights — rest looks like part of the plan.", change: "Protect 7+ hours of sleep on 4 nights this week."};
+    }
+  }
+  let lesson = null, lessonKind = null, change = null;
+  if(sleepLesson){ lesson = sleepLesson.text; lessonKind = "sleep"; change = sleepLesson.change; }
+  else if(topTrig && topN >= 2){
+    lesson = "“" + topTrig + "” showed up " + topN + " times — that's your clearest signal this week.";
+    lessonKind = "trigger";
+    change = SUNDAY_TRIGGER_CHANGE[topTrig] || "Log a check-in every morning this week.";
+  } else if(stats.mood != null && stats.mood <= 2.5){
+    lesson = "Your mood averaged " + fmtAvg(stats.mood) + " this week — a heavy one. The fact that you kept logging through it matters.";
+    lessonKind = "mood";
+    change = "One kind thing for yourself each evening this week — a walk, a call, an early night.";
+  } else {
+    lesson = "No single pattern stood out this week — and that's an honest result too.";
+    lessonKind = "none";
+    change = "Log a check-in every morning this week.";
+  }
+  return {weekStart: keys[0], weekEnd: keys[6], stats: stats, thin: false, lesson: lesson, lessonKind: lessonKind, change: change};
+}
+function sundayReviewHTML(r){
+  const s = r.stats;
+  return '<div class="item"><div class="meta">Week of ' + esc(fmtDate(r.weekStart)) + ' – ' + esc(fmtDate(r.weekEnd)) + '</div>' +
+    '<div class="muted">Sober ' + s.sober + '/' + s.days + ' logged days &middot; Mood ' + fmtAvg(s.mood) + ' &middot; Craving ' + fmtAvg(s.craving) + ' &middot; Meetings ' + s.meetings + ' &middot; Wins ' + s.wins + '</div>' +
+    '<div style="margin-top:8px;"><b>One honest lesson:</b> ' + esc(r.lesson) + '</div>' +
+    '<div style="margin-top:4px;"><b>One small change:</b> ' + esc(r.change) + '</div></div>';
+}
+function buildSundayReview(){
+  const r = computeSundayReview();
+  const msg = $("sundayMsg"), res = $("sundayResult");
+  if(r.thin){
+    msg.textContent = "Not enough check-ins yet this week — log a few more days and I'll build it.";
+    res.innerHTML = "";
+    return;
+  }
+  msg.textContent = "";
+  state.sundayReviews = (state.sundayReviews || []).filter(function(q){ return q.weekStart !== r.weekStart; });
+  state.sundayReviews.push({weekStart: r.weekStart, weekEnd: r.weekEnd, stats: r.stats, lesson: r.lesson, lessonKind: r.lessonKind, change: r.change});
+  saveState();
+  res.innerHTML = sundayReviewHTML(r) +
+    '<div class="row mt8"><button id="sundayFocusBtn" class="small">Make it my focus</button>' +
+    '<button id="sundayDismissBtn" class="small ghost">Dismiss</button></div>';
+  $("sundayFocusBtn").addEventListener("click", function(){
+    state.weeklyFocus = {text: r.change, weekStart: r.weekStart};
+    saveState(); renderFocusStrip();
+    $("sundayMsg").textContent = "Saved as this week's focus — you'll see it on the Today tab.";
+  });
+  $("sundayDismissBtn").addEventListener("click", function(){ res.innerHTML = ""; });
+  renderSundayHistory();
+}
+function renderSundayHistory(){
+  const el = $("sundayHistory");
+  if(!el) return;
+  const list = (state.sundayReviews || []).slice().sort(function(a,b){ return a.weekStart < b.weekStart ? 1 : -1; });
+  if(!list.length){ el.innerHTML = ""; return; }
+  let html = '<h3 style="margin:16px 0 8px;">Past reviews</h3>';
+  list.forEach(function(r){ html += sundayReviewHTML(r); });
+  el.innerHTML = html;
+}
+function renderFocusStrip(){
+  const card = $("focusCard");
+  if(!card) return;
+  const f = state.weeklyFocus;
+  if(f && f.weekStart === sundayWeekStart()){
+    $("focusText").textContent = f.text;
+    card.classList.remove("hidden");
+  } else {
+    card.classList.add("hidden");
+  }
+}
+$("sundayBuild").addEventListener("click", buildSundayReview);
+$("focusDismiss").addEventListener("click", function(){
+  state.weeklyFocus = null; saveState(); renderFocusStrip();
+});
+
+/* ============ DAILY PHOTO TIMELINE ============ */
+const dpUrls = {};
+function dpSorted(){
+  return (state.dailyPhotos || []).slice().sort(function(a,b){ return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0); });
+}
+function dailyPhotoFor(date){
+  return (state.dailyPhotos || []).find(function(p){ return p.date === date; }) || null;
+}
+function dpUpsertToday(id){
+  const today = todayKey();
+  const old = dailyPhotoFor(today);
+  if(old){
+    if(dpUrls[old.id]){ try{ URL.revokeObjectURL(dpUrls[old.id]); }catch(e){} delete dpUrls[old.id]; }
+    mediaDelete("photos", old.id).catch(function(){});
+    state.dailyPhotos = state.dailyPhotos.filter(function(q){ return q.id !== old.id; });
+  }
+  state.dailyPhotos.push({id: id, date: today});
+  return !!old;
+}
+function dpDeletePhoto(id){
+  state.dailyPhotos = (state.dailyPhotos || []).filter(function(q){ return q.id !== id; });
+  if(dpUrls[id]){ try{ URL.revokeObjectURL(dpUrls[id]); }catch(e){} delete dpUrls[id]; }
+  mediaDelete("photos", id).catch(function(){});
+  saveState(); renderDailyPhotos();
+}
+function dpComparePair(){
+  const list = dpSorted();
+  if(list.length < 2) return null;
+  return [list[0], list[list.length - 1]];
+}
+function dpLoadThumb(p, img, btn){
+  if(dpUrls[p.id]){ img.src = dpUrls[p.id]; return; }
+  mediaGet("photos", p.id).then(function(blob){
+    if(!blob){ btn.style.display = "none"; return; }
+    if(!(state.dailyPhotos || []).some(function(q){ return q.id === p.id; })) return;
+    dpUrls[p.id] = URL.createObjectURL(blob);
+    img.src = dpUrls[p.id];
+  }).catch(function(){ btn.style.display = "none"; });
+}
+function renderDailyPhotos(){
+  const strip = $("dailyPhotoStrip");
+  if(!strip) return;
+  Object.keys(dpUrls).forEach(function(id){
+    if(!(state.dailyPhotos || []).some(function(p){ return p.id === id; })){
+      try{ URL.revokeObjectURL(dpUrls[id]); }catch(e){}
+      delete dpUrls[id];
+    }
+  });
+  const list = dpSorted();
+  const addBtn = $("dailyPhotoAddBtn");
+  if(!mediaSupported()){
+    strip.innerHTML = '<p class="muted" style="margin:0;">Photo storage isn\'t supported in this browser, so timeline photos can\'t be kept here.</p>';
+    addBtn.disabled = true;
+  } else if(!list.length){
+    strip.innerHTML = '<p class="muted" style="margin:0;">Day one starts with one photo.</p>';
+    addBtn.disabled = false;
+    addBtn.textContent = "Add today's photo";
+  } else {
+    strip.innerHTML = "";
+    list.forEach(function(p, idx){
+      const btn = document.createElement("button");
+      btn.setAttribute("aria-label", "Timeline photo " + p.date);
+      const img = document.createElement("img");
+      img.alt = "";
+      btn.appendChild(img);
+      const lab = document.createElement("span");
+      lab.className = "dplab";
+      lab.textContent = fmtDate(p.date);
+      btn.appendChild(lab);
+      btn.addEventListener("click", function(){ openDailyPhoto(idx); });
+      strip.appendChild(btn);
+      dpLoadThumb(p, img, btn);
+    });
+    addBtn.disabled = false;
+    addBtn.textContent = dailyPhotoFor(todayKey()) ? "Replace today's photo" : "Add today's photo";
+  }
+  $("dailyCompareBtn").classList.toggle("hidden", list.length < 2);
+}
+$("dailyPhotoAddBtn").addEventListener("click", function(){
+  if(!mediaSupported()){ $("dailyPhotoMsg").textContent = "Photo storage isn't supported in this browser."; return; }
+  if(dailyPhotoFor(todayKey()) && !confirm("Replace today's photo?")) return;
+  $("dailyPhotoFile").click();
+});
+$("dailyPhotoFile").addEventListener("change", function(){
+  const input = $("dailyPhotoFile");
+  const file = input.files && input.files[0];
+  input.value = "";
+  if(!file) return;
+  const msg = $("dailyPhotoMsg");
+  msg.textContent = "Saving your photo…";
+  downscaleImage(file).then(function(blob){
+    const id = uid();
+    return mediaPut("photos", id, blob).then(function(){
+      const replaced = dpUpsertToday(id);
+      saveState(); renderDailyPhotos();
+      msg.textContent = replaced ? "Today's photo replaced." : "Added. Day one, on the record.";
+    });
+  }).catch(function(){
+    msg.textContent = "Couldn't save that photo — try a different one.";
+  });
+});
+let dpIdx = 0, dpCompare = false;
+function openDailyPhoto(idx){
+  const list = dpSorted();
+  if(idx < 0 || idx >= list.length) return;
+  dpIdx = idx; dpCompare = false;
+  renderDailyPhotoView();
+  $("dailyPhotoOverlay").classList.remove("hidden");
+}
+function closeDailyPhoto(){
+  dpCompare = false;
+  $("dailyPhotoOverlay").classList.add("hidden");
+}
+function dpLoadBig(p, img){
+  if(dpUrls[p.id]){ img.src = dpUrls[p.id]; return; }
+  mediaGet("photos", p.id).then(function(blob){
+    if(!blob) return;
+    if(!(state.dailyPhotos || []).some(function(q){ return q.id === p.id; })) return;
+    dpUrls[p.id] = URL.createObjectURL(blob);
+    img.src = dpUrls[p.id];
+  }).catch(function(){});
+}
+function renderDailyPhotoView(){
+  const list = dpSorted();
+  const view = $("dailyPhotoView");
+  if(dpCompare){
+    const pair = dpComparePair();
+    if(!pair){ closeDailyPhoto(); return; }
+    view.innerHTML = "";
+    pair.forEach(function(p, i){
+      const wrap = document.createElement("div");
+      const img = document.createElement("img");
+      img.className = "dpbig"; img.alt = "";
+      wrap.appendChild(img);
+      const cap = document.createElement("div");
+      cap.className = "muted mt8";
+      cap.textContent = (i === 0 ? "First — " : "Latest — ") + fmtDate(p.date);
+      wrap.appendChild(cap);
+      view.appendChild(wrap);
+      dpLoadBig(p, img);
+    });
+    $("dailyPhotoPrev").disabled = true;
+    $("dailyPhotoNext").disabled = true;
+    $("dailyPhotoDelete").classList.add("hidden");
+    return;
+  }
+  const p = list[dpIdx];
+  if(!p){ closeDailyPhoto(); return; }
+  view.innerHTML = "";
+  const img = document.createElement("img");
+  img.className = "dpbig"; img.alt = "";
+  view.appendChild(img);
+  const cap = document.createElement("div");
+  cap.className = "muted mt8";
+  cap.textContent = fmtDate(p.date) + " · photo " + (dpIdx + 1) + " of " + list.length;
+  view.appendChild(cap);
+  $("dailyPhotoPrev").disabled = dpIdx === 0;
+  $("dailyPhotoNext").disabled = dpIdx === list.length - 1;
+  $("dailyPhotoDelete").classList.remove("hidden");
+  dpLoadBig(p, img);
+}
+$("dailyPhotoClose").addEventListener("click", closeDailyPhoto);
+$("dailyPhotoPrev").addEventListener("click", function(){ if(!dpCompare && dpIdx > 0){ dpIdx--; renderDailyPhotoView(); } });
+$("dailyPhotoNext").addEventListener("click", function(){ const list = dpSorted(); if(!dpCompare && dpIdx < list.length - 1){ dpIdx++; renderDailyPhotoView(); } });
+$("dailyPhotoDelete").addEventListener("click", function(){
+  const list = dpSorted();
+  const p = list[dpIdx];
+  if(!p) return;
+  if(!confirm("Delete this photo?")) return;
+  dpDeletePhoto(p.id);
+  const after = dpSorted();
+  if(!after.length) closeDailyPhoto();
+  else { if(dpIdx >= after.length) dpIdx = after.length - 1; renderDailyPhotoView(); }
+});
+$("dailyCompareBtn").addEventListener("click", function(){
+  if(!dpComparePair()) return;
+  dpCompare = true;
+  renderDailyPhotoView();
+  $("dailyPhotoOverlay").classList.remove("hidden");
 });
 
 /* ============ BATTLE PLANS ============ */
@@ -5329,6 +5688,9 @@ function renderAll(){
   renderBattlePlans();
   renderStole();
   renderRefusal();
+  renderSundayHistory();
+  renderDailyPhotos();
+  renderFocusStrip();
   renderPledge();
   renderCountdown();
   renderCheckin();
@@ -5371,9 +5733,9 @@ setInterval(function(){
 setInterval(function(){ checkMilestones(); checkChips(); checkLetters(); checkFitnessBadges(); checkSmokeBadges(); }, 60000);
 </script>
 <script>
-// PWA (v1.6): offline service worker + install prompt + tap-to-apply updates.
+// PWA (v1.7): offline service worker + install prompt + tap-to-apply updates.
 // Added 2026-10-20. Self-contained: does not modify the main app script.
-const SF_APP_VERSION='1.6';
+const SF_APP_VERSION='1.7';
 let sfReg=null, sfWaiting=null, sfReloading=false, sfPrompt=null;
 function sfShowBanner(){var b=document.getElementById('sfUpdateBanner'); if(b)b.style.display='block';}
 if('serviceWorker' in navigator){
