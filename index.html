@@ -320,6 +320,10 @@
       <div><span class="streak" id="pledgeStreak">&#x1F525; 0-day pledge streak</span></div>
     </div>
 
+    <div class="card hidden" id="smokeTodayStripCard">
+      <p class="center" style="margin:0;" id="smokeTodayStripText"></p>
+    </div>
+
     <div class="card">
       <h2>&#x1F4C5; Next meeting</h2>
       <p class="muted center" id="meetNameLabel" style="margin:0 0 4px;"></p>
@@ -840,6 +844,18 @@
         <h3>Last 14 days</h3>
         <div class="chartbox" id="smokeCutChart"></div>
         <button id="smokeReadyQuit" class="ghost mt12" style="width:100%;">I'm ready &mdash; set my quit date</button>
+      </div>
+
+      <div class="card hidden" id="smokeTaperCard">
+        <h2>&#x1FA9C; Taper ladder</h2>
+        <p class="muted" id="smokeTaperBanner" style="margin:0 0 10px;"></p>
+        <div id="smokeTaperList"></div>
+        <p class="muted" id="smokeTaperNext" style="margin:10px 0 0;"></p>
+        <div class="hidden" id="smokeTaperQuitWrap" style="margin-top:12px; text-align:center;">
+          <button id="smokeTaperQuitBtn">I'm quit &mdash; start my smoke-free counter</button>
+        </div>
+        <button id="smokeTaperHoldBtn" class="small ghost mt12 hidden">Hold this step one more day</button>
+        <button id="smokeTaperToggle" class="small ghost mt12">Pause ladder</button>
       </div>
 
       <div class="card">
@@ -1393,7 +1409,11 @@
 function defaultSmoke(){
   return {
     mode:null, quitDate:null, cigsPerDay:20, packPrice:8, dailyLimit:10,
-    preQuit:{}, cigLogs:{}, smokeCheckins:{}, smokeReasons:[], smokeSlips:[]
+    preQuit:{}, cigLogs:{}, smokeCheckins:{}, smokeReasons:[], smokeSlips:[],
+    taper:{active:true, startDate:"2026-11-05", steps:[
+      {limit:15, days:3}, {limit:12, days:3}, {limit:9, days:3},
+      {limit:6, days:3}, {limit:3, days:3}, {limit:0, days:0}
+    ]}
   };
 }
 /* ============ STORAGE ============ */
@@ -4825,6 +4845,7 @@ const SMOKE_PREQUIT = [
 function smk(){
   if(!state.smoke || typeof state.smoke !== "object") state.smoke = defaultSmoke();
   else state.smoke = Object.assign(defaultSmoke(), state.smoke);
+  if(!state.smoke.taper || typeof state.smoke.taper !== "object") state.smoke.taper = defaultSmoke().taper;
   return state.smoke;
 }
 function smokeQuitTime(){ const s = smk(); return s.quitDate ? new Date(s.quitDate).getTime() : null; }
@@ -4858,6 +4879,70 @@ function smokeCountdown(){
   return {d:Math.floor(ms/86400000), h:Math.floor(ms%86400000/3600000)};
 }
 function smokeTodayCount(){ return smk().cigLogs[todayKey()] || 0; }
+/* Taper ladder: state.smoke.taper holds startDate plus duration-based steps
+   ({limit, days}; days:0 on the last step means open-ended). Every step date
+   is derived from cumulative days, so the schedule stays adjustable: edit the
+   steps (or hold a step) and all later dates shift. */
+function taperSteps(){ const t = smk().taper; return (t && t.steps) ? t.steps : []; }
+function taperActive(){ const t = smk().taper; return !!(t && t.active); }
+function taperAddDays(key, n){ const d = keyToDate(key); d.setDate(d.getDate()+n); return localKey(d); }
+function taperDayBefore(key){ return taperAddDays(key, -1); }
+function taperStepStart(i){
+  const t = smk().taper;
+  if(!t || !t.startDate) return null;
+  let n = 0;
+  const steps = taperSteps();
+  for(let j=0;j<i && j<steps.length;j++) n += steps[j].days || 0;
+  return taperAddDays(t.startDate, n);
+}
+function taperStepEnd(i){
+  const steps = taperSteps();
+  if(i+1 >= steps.length) return null;
+  return taperStepStart(i+1);
+}
+function taperQuitDateKey(){
+  const steps = taperSteps();
+  return steps.length ? taperStepStart(steps.length-1) : null;
+}
+function taperStepFor(key){
+  const steps = taperSteps();
+  for(let i=0;i<steps.length;i++){
+    const st0 = taperStepStart(i), en = taperStepEnd(i);
+    if(st0 && key >= st0 && (en === null || key < en)) return steps[i];
+  }
+  return null;
+}
+function taperTodayStep(){ return taperActive() ? taperStepFor(todayKey()) : null; }
+function taperPreStart(){
+  if(!taperActive()) return false;
+  const t = smk().taper;
+  return t && t.startDate && todayKey() < t.startDate;
+}
+function taperStepIndex(step){
+  const steps = taperSteps();
+  for(let i=0;i<steps.length;i++){ if(steps[i] === step) return i; }
+  return -1;
+}
+/* Today's ladder limit, or null when the ladder is off or hasn't started yet. */
+function taperTodayLimit(){
+  const st = taperTodayStep();
+  return st ? st.limit : null;
+}
+/* The limit the counter actually counts against: the ladder's when it is
+   active and a step has started, otherwise the manual daily limit. */
+function smokeEffLimit(){
+  const tl = taperTodayLimit();
+  return tl !== null ? tl : (smk().dailyLimit || 0);
+}
+function taperStepRange(i){
+  const steps = taperSteps(), st = steps[i];
+  const start = taperStepStart(i), end = taperStepEnd(i);
+  if(!end) return fmtDate(start) + " onward";
+  const last = taperDayBefore(end);
+  if(last === start) return fmtDate(start);
+  return fmtDate(start) + " \u2013 " + fmtDate(last);
+}
+
 function smokeWeekTotal(){
   const s = smk(), wk = weekKey(new Date());
   let t = 0;
@@ -4884,7 +4969,11 @@ function renderSmoke(){
   const hasMode = !!s.mode;
   $("smokeSetup").classList.toggle("hidden", hasMode);
   $("smokeMain").classList.toggle("hidden", !hasMode);
-  if(!hasMode) return;
+  if(!hasMode){
+    $("smokeTaperCard").classList.add("hidden");
+    $("smokeTodayStripCard").classList.add("hidden");
+    return;
+  }
   const mode = s.mode;
   let sub = "", big = "\u2014", detail = "";
   if(mode === "planning"){
@@ -4912,9 +5001,16 @@ function renderSmoke(){
     $("smokeLifeNote").classList.remove("hidden");
   } else {
     sub = "Trending down is winning. Small steps, steady progress.";
-    const tc = smokeTodayCount(), lim = s.dailyLimit || 0;
+    const tc = smokeTodayCount(), lim = smokeEffLimit();
     big = tc + " / " + (lim || "\u2013");
     detail = smokeWeekTotal() + " this week" + (lim ? " \u2022 limit " + lim + "/day" : "");
+    const tst0 = taperTodayStep();
+    if(tst0){
+      const ti0 = taperStepIndex(tst0);
+      detail += (tst0.limit === 0) ? " \u2022 quit day" : " \u2022 ladder step " + (ti0+1) + " of " + taperSteps().length;
+    } else if(taperPreStart()){
+      detail += " \u2022 ladder starts " + fmtDate(smk().taper.startDate) + " at 6am";
+    }
     $("smokeK1").textContent = "today";
     $("smokeS1").textContent = tc;
     $("smokeK2").textContent = "this week";
@@ -4940,13 +5036,22 @@ function renderSmoke(){
     renderSmokeChecklist();
   }
   if(mode === "cutting"){
-    $("smokeLimit").value = s.dailyLimit || "";
-    $("smokeTodayCount").textContent = smokeTodayCount();
-    $("smokeTodayLimit").textContent = s.dailyLimit || "\u2013";
-    const lm = s.dailyLimit || 0, tc2 = smokeTodayCount();
-    $("smokeCutMsg").textContent = lm > 0
-      ? (tc2 <= lm ? "Under your limit \u2014 nice pacing." : "Over today's limit \u2014 tomorrow is a fresh page. No judgment.")
-      : "Set a daily limit to track against.";
+    const ladderOn = taperActive() && !!taperTodayStep();
+    const lm = smokeEffLimit(), tc2 = smokeTodayCount();
+    $("smokeLimit").value = ladderOn ? lm : (s.dailyLimit || "");
+    $("smokeLimit").disabled = !!ladderOn;
+    $("smokeTodayCount").textContent = tc2;
+    $("smokeTodayLimit").textContent = lm || "\u2013";
+    if(lm > 0){
+      if(tc2 <= lm) $("smokeCutMsg").textContent = ladderOn ? "Under today's ladder limit \u2014 nice pacing." : "Under your limit \u2014 nice pacing.";
+      else $("smokeCutMsg").textContent = ladderOn
+        ? "Over today's ladder limit \u2014 no shame, just data. If today was rough, the reflect & recommit walkthrough is below."
+        : "Over today's limit \u2014 tomorrow is a fresh page. No judgment.";
+    } else if(ladderOn){
+      $("smokeCutMsg").textContent = "Today's the day \u2014 0 cigarettes. Log a smoke-free check-in below when you're ready.";
+    } else {
+      $("smokeCutMsg").textContent = "Set a daily limit to track against.";
+    }
     renderSmokeCutChart();
   }
   renderSmokeHealth();
@@ -4956,6 +5061,82 @@ function renderSmoke(){
   renderSmokePatterns();
   renderSmokeReasons();
   renderSmokeSlips();
+  renderSmokeTaper();
+  renderSmokeTodayStrip();
+}
+
+/* Taper ladder card + Today-tab strip. Every date and limit below is read
+   from state.smoke.taper.steps, so a revised schedule needs no code change. */
+function renderSmokeTaper(){
+  const card = $("smokeTaperCard");
+  const s = smk();
+  if(!s.mode || s.mode === "quit" || !s.taper){
+    card.classList.add("hidden");
+    return;
+  }
+  card.classList.remove("hidden");
+  const steps = taperSteps(), today = todayKey();
+  const on = taperActive(), cur = taperTodayStep();
+  const banner = $("smokeTaperBanner"), list = $("smokeTaperList"), next = $("smokeTaperNext");
+  if(!on){
+    banner.textContent = "Ladder paused \u2014 you're on your own daily limit for now. Your schedule is still here when you want it back.";
+  } else if(taperPreStart()){
+    const start = s.taper.startDate;
+    const days = Math.round((keyToDate(start).getTime()-keyToDate(today).getTime())/86400000);
+    const first = steps.length ? steps[0].limit : null;
+    banner.textContent = (days === 1 ? "Starts tomorrow, " : "Starts ") + fmtDate(start) + " at 6am" +
+      (first !== null ? " \u2014 " + first + " a day to start." : ".");
+  } else if(cur && cur.limit === 0){
+    banner.textContent = "Today's the day \u2014 0 cigarettes. You tapered all the way down. When you're ready, start the smoke-free counter below.";
+  } else if(cur){
+    const ti = taperStepIndex(cur);
+    banner.textContent = "Step " + (ti+1) + " of " + steps.length + ": " + cur.limit + " a day. You're on schedule \u2014 one step at a time.";
+  } else {
+    banner.textContent = "Taper ladder";
+  }
+  let html = "";
+  steps.forEach(function(st, i){
+    const en = taperStepEnd(i);
+    let status = "upcoming", mark = "";
+    if(on){
+      if(cur === st){ status = "current"; mark = " \u2014 today"; }
+      else if(en && today >= en){ status = "done"; mark = " \u2014 done"; }
+    }
+    const label = st.limit === 0 ? "Quit day \u2014 0" : st.limit + " / day";
+    html += '<div class="row" style="justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--line);' +
+      (status === "current" ? " font-weight:700;" : (status === "done" ? " opacity:.6;" : "")) + '">' +
+      "<span>" + esc(taperStepRange(i)) + "</span>" +
+      "<span>" + esc(label) + esc(mark) + "</span></div>";
+  });
+  list.innerHTML = html;
+  let nx = null, nxStart = null;
+  steps.forEach(function(st, i){ const st0 = taperStepStart(i); if(st0 && st0 > today && !nx){ nx = st; nxStart = st0; } });
+  next.textContent = (on && nx) ? "Next step: " + nx.limit + " a day from " + fmtDate(nxStart) + "." : "";
+  $("smokeTaperQuitWrap").classList.toggle("hidden", !(on && cur && cur.limit === 0));
+  $("smokeTaperHoldBtn").classList.toggle("hidden", !(on && cur && cur.limit > 0));
+  $("smokeTaperToggle").textContent = on ? "Pause ladder" : "Turn ladder back on";
+}
+
+function renderSmokeTodayStrip(){
+  const card = $("smokeTodayStripCard"), txt = $("smokeTodayStripText");
+  const s = smk();
+  if(s.mode !== "cutting"){ card.classList.add("hidden"); return; }
+  const tc = smokeTodayCount(), lim = smokeEffLimit(), cur = taperTodayStep();
+  let msg;
+  if(taperActive() && cur && cur.limit === 0){
+    msg = "\uD83D\uDEAC Today's the day \u2014 0 cigarettes. You've got this.";
+  } else if(taperPreStart()){
+    const first = taperSteps().length ? taperSteps()[0].limit : null;
+    msg = "\uD83D\uDEAC Smoke ladder starts " + fmtDate(s.taper.startDate) + " at 6am" +
+      (first !== null ? " \u2014 first step " + first + " a day." : ".") +
+      " Today's limit: " + (lim || "\u2013") + " \u2014 " + tc + " logged.";
+  } else if(taperActive() && cur){
+    msg = "\uD83D\uDEAC Today's smoke limit: " + lim + " \u2014 " + tc + " logged (taper step " + (taperStepIndex(cur)+1) + " of " + taperSteps().length + ").";
+  } else {
+    msg = "\uD83D\uDEAC Today's smoke limit: " + (lim || "\u2013") + " \u2014 " + tc + " logged.";
+  }
+  txt.textContent = msg;
+  card.classList.remove("hidden");
 }
 function renderSmokeTick(){
   const s = smk();
@@ -4995,20 +5176,20 @@ function renderSmokeCutChart(){
   const s = smk();
   const vals = [];
   for(let i=13;i>=0;i--){ const d = new Date(); d.setDate(d.getDate()-i); vals.push(s.cigLogs[localKey(d)]||0); }
-  const mx = Math.max.apply(null, vals.concat([s.dailyLimit||0, 0.001]));
+  const mx = Math.max.apply(null, vals.concat([smokeEffLimit(), 0.001]));
   const names = ["S","M","T","W","T","F","S"];
   let html = "";
   for(let i=0;i<14;i++){
     const d = new Date(); d.setDate(d.getDate()-(13-i));
     const h = Math.min(38, 3 + (vals[i]/mx)*35);
-    const over = (s.dailyLimit||0) > 0 && vals[i] > s.dailyLimit;
+    const over = (smokeEffLimit()) > 0 && vals[i] > smokeEffLimit();
     html += '<div class="wday' + (i === 13 ? " today" : "") + '"><div class="b"><div class="fill" style="height:' +
       h.toFixed(0) + "px" + (over ? ";background:var(--warn);" : "") + '"></div></div>' +
       "<div>" + names[d.getDay()] + '</div><div class="muted">' + (vals[i] > 0 ? vals[i] : "") + "</div></div>";
   }
   $("smokeCutChart").innerHTML = '<div class="wstrip" style="grid-template-columns:repeat(14,1fr);">' + html + "</div>" +
     '<div class="legend"><span><span class="sw" style="background:var(--accent2);"></span>cigarettes</span>' +
-    ((s.dailyLimit||0) > 0 ? ' <span><span class="sw" style="background:var(--warn);"></span>over limit</span>' : "") + "</div>";
+    ((smokeEffLimit()) > 0 ? ' <span><span class="sw" style="background:var(--warn);"></span>over limit</span>' : "") + "</div>";
 }
 function renderSmokeHealth(){
   const hrs = smk().mode === "quit" ? smokeHours() : 0;
@@ -5258,6 +5439,25 @@ $("smokeLogCig").addEventListener("click", function(){
 $("smokeLimit").addEventListener("change", function(){
   const v = parseInt($("smokeLimit").value, 10);
   smk().dailyLimit = v > 0 ? v : 0;
+  saveState(); renderSmoke();
+});
+$("smokeTaperToggle").addEventListener("click", function(){
+  const t = smk().taper;
+  if(!t) return;
+  t.active = !t.active;
+  saveState(); renderSmoke();
+});
+$("smokeTaperHoldBtn").addEventListener("click", function(){
+  const cur = taperTodayStep();
+  if(!cur || cur.limit <= 0) return;
+  cur.days = (cur.days || 0) + 1;
+  saveState(); renderSmoke();
+});
+$("smokeTaperQuitBtn").addEventListener("click", function(){
+  const qd = taperQuitDateKey() || todayKey();
+  if(!confirm("Start your smoke-free counter from " + fmtDate(qd) + " at 6am?")) return;
+  smk().mode = "quit";
+  smk().quitDate = new Date(qd + "T06:00").toISOString();
   saveState(); renderSmoke();
 });
 $("smokeReadyQuit").addEventListener("click", function(){
@@ -5733,9 +5933,9 @@ setInterval(function(){
 setInterval(function(){ checkMilestones(); checkChips(); checkLetters(); checkFitnessBadges(); checkSmokeBadges(); }, 60000);
 </script>
 <script>
-// PWA (v1.7): offline service worker + install prompt + tap-to-apply updates.
+// PWA (v1.8): offline service worker + install prompt + tap-to-apply updates.
 // Added 2026-10-20. Self-contained: does not modify the main app script.
-const SF_APP_VERSION='1.7';
+const SF_APP_VERSION='1.8';
 let sfReg=null, sfWaiting=null, sfReloading=false, sfPrompt=null;
 function sfShowBanner(){var b=document.getElementById('sfUpdateBanner'); if(b)b.style.display='block';}
 if('serviceWorker' in navigator){
