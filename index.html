@@ -1211,15 +1211,22 @@
 
     <div class="card">
       <h2>&#x1F6AD; Smoke-free settings</h2>
-      <label class="lbl" for="setSmokeMode">My smoking plan</label>
-      <select id="setSmokeMode">
-        <option value="">Not set</option>
-        <option value="planning">Planning to quit</option>
-        <option value="quit">I've quit</option>
-        <option value="cutting">Cutting down</option>
-      </select>
-      <label class="lbl" for="setSmokeQuitDate">Quit date &amp; time</label>
-      <input type="datetime-local" id="setSmokeQuitDate">
+      <div id="setSmokeLadderWrap">
+        <p class="muted" id="setSmokeLadderText" style="margin:0 0 10px;"></p>
+        <p class="muted" id="setSmokeLadderNote" style="margin:0 0 10px;"></p>
+        <button id="setSmokeLadderToggle" class="small ghost">Pause ladder</button>
+      </div>
+      <div id="setSmokeManualWrap">
+        <label class="lbl" for="setSmokeMode">My smoking plan</label>
+        <select id="setSmokeMode">
+          <option value="">Not set</option>
+          <option value="planning">Planning to quit</option>
+          <option value="quit">I've quit</option>
+          <option value="cutting">Cutting down</option>
+        </select>
+        <label class="lbl" for="setSmokeQuitDate">Quit date &amp; time</label>
+        <input type="datetime-local" id="setSmokeQuitDate">
+      </div>
       <div class="grid2">
         <div>
           <label class="lbl" for="setCigsPerDay">Cigarettes per day (avg)</label>
@@ -1230,8 +1237,10 @@
           <input type="number" id="setPackPrice" min="0" step="0.5" inputmode="decimal">
         </div>
       </div>
-      <label class="lbl" for="setSmokeLimit">Daily limit (cutting down)</label>
-      <input type="number" id="setSmokeLimit" min="1" inputmode="numeric" placeholder="e.g. 10">
+      <div id="setSmokeLimitWrap">
+        <label class="lbl" for="setSmokeLimit">Daily limit (cutting down)</label>
+        <input type="number" id="setSmokeLimit" min="1" inputmode="numeric" placeholder="e.g. 10">
+      </div>
     </div>
 
     <div class="card">
@@ -3988,6 +3997,32 @@ function renderSettings(){
   $("setCigsPerDay").value = ssm0.cigsPerDay || 0;
   $("setPackPrice").value = ssm0.packPrice || 0;
   $("setSmokeLimit").value = ssm0.dailyLimit || "";
+  /* One source of truth: while the ladder is active it drives the plan, so
+     Settings shows the ladder instead of the manual plan controls. The stats
+     inputs above (cigs/day, pack price) stay editable in both states. */
+  const ladderOn = taperActive();
+  $("setSmokeManualWrap").classList.toggle("hidden", ladderOn);
+  $("setSmokeLimitWrap").classList.toggle("hidden", ladderOn);
+  if(ladderOn){
+    const cur = taperTodayStep(), qd = taperQuitDateKey();
+    let summary = "Taper ladder: active \u2014 Tapering, cutting down on the ladder. ";
+    if(taperPreStart()){
+      const first = taperSteps().length ? taperSteps()[0].limit : null;
+      summary += "Starts " + fmtDate(ssm0.taper.startDate) + " at 6am" + (first !== null ? " at " + first + " a day." : ".");
+    } else if(cur && cur.limit === 0){
+      summary += "Today's the day \u2014 0 cigarettes.";
+    } else if(cur){
+      summary += "Step " + (taperStepIndex(cur)+1) + " of " + taperSteps().length + ": " + cur.limit + " a day today.";
+    }
+    if(qd) summary += " Quit day: " + fmtDate(qd) + ".";
+    $("setSmokeLadderText").textContent = summary;
+    $("setSmokeLadderNote").textContent = "The ladder is driving your plan \u2014 pause it to set these by hand.";
+    $("setSmokeLadderToggle").textContent = "Pause ladder";
+  } else {
+    $("setSmokeLadderText").textContent = "Taper ladder paused \u2014 your schedule is saved, including any holds.";
+    $("setSmokeLadderNote").textContent = "The manual controls below are driving for now.";
+    $("setSmokeLadderToggle").textContent = "Turn ladder back on";
+  }
   $("setGoalWeight").value = state.goalWeight != null ? fmtWn(state.goalWeight) : "";
   $("setReduceMotion").checked = !!state.reduceMotion;
   $("setTextSize").value = state.textSize === "large" ? "large" : "normal";
@@ -4004,18 +4039,33 @@ $("setSave").addEventListener("click", function(){
   state.textSize = $("setTextSize").value === "large" ? "large" : "normal";
   state.weightUnit = $("setWeightUnit").value === "kg" ? "kg" : "lbs";
   state.distUnit = $("setDistUnit").value === "km" ? "km" : "mi";
+  /* While the ladder drives the plan, a settings save must never overwrite
+     it: mode, quit date, and daily limit stay exactly as the ladder has them.
+     Cigs/day and pack price are statistics, not the plan, so they always save.
+     NOTE: check the ladder BEFORE taking the smk() reference — smk() rebuilds
+     state.smoke on every call, and taperActive() calls smk() internally, so a
+     reference taken first would go stale and its writes would be lost. */
+  const ladderOn = taperActive();
   const ssm = smk();
-  ssm.mode = $("setSmokeMode").value || null;
-  const sqdv = $("setSmokeQuitDate").value;
-  ssm.quitDate = sqdv ? new Date(sqdv).toISOString() : null;
+  if(!ladderOn){
+    ssm.mode = $("setSmokeMode").value || null;
+    const sqdv = $("setSmokeQuitDate").value;
+    ssm.quitDate = sqdv ? new Date(sqdv).toISOString() : null;
+    const slim = parseInt($("setSmokeLimit").value, 10);
+    ssm.dailyLimit = slim > 0 ? slim : 0;
+  }
   ssm.cigsPerDay = Math.max(0, parseInt($("setCigsPerDay").value, 10) || 0);
   ssm.packPrice = Math.max(0, parseFloat($("setPackPrice").value) || 0);
-  const slim = parseInt($("setSmokeLimit").value, 10);
-  ssm.dailyLimit = slim > 0 ? slim : 0;
   const gw = parseFloat($("setGoalWeight").value);
   state.goalWeight = gw > 0 ? toLbs(gw) : null;
   applyTheme(); saveState(); renderAll();
   alert("Settings saved.");
+});
+$("setSmokeLadderToggle").addEventListener("click", function(){
+  const t = smk().taper;
+  if(!t) return;
+  t.active = !t.active;
+  saveState(); renderAll();
 });
 $("setTheme").addEventListener("change", function(){
   state.theme = $("setTheme").value;
@@ -5445,20 +5495,20 @@ $("smokeTaperToggle").addEventListener("click", function(){
   const t = smk().taper;
   if(!t) return;
   t.active = !t.active;
-  saveState(); renderSmoke();
+  saveState(); renderAll();
 });
 $("smokeTaperHoldBtn").addEventListener("click", function(){
   const cur = taperTodayStep();
   if(!cur || cur.limit <= 0) return;
   cur.days = (cur.days || 0) + 1;
-  saveState(); renderSmoke();
+  saveState(); renderAll();
 });
 $("smokeTaperQuitBtn").addEventListener("click", function(){
   const qd = taperQuitDateKey() || todayKey();
   if(!confirm("Start your smoke-free counter from " + fmtDate(qd) + " at 6am?")) return;
   smk().mode = "quit";
   smk().quitDate = new Date(qd + "T06:00").toISOString();
-  saveState(); renderSmoke();
+  saveState(); renderAll();
 });
 $("smokeReadyQuit").addEventListener("click", function(){
   smk().mode = "quit";
@@ -5933,9 +5983,9 @@ setInterval(function(){
 setInterval(function(){ checkMilestones(); checkChips(); checkLetters(); checkFitnessBadges(); checkSmokeBadges(); }, 60000);
 </script>
 <script>
-// PWA (v1.8): offline service worker + install prompt + tap-to-apply updates.
+// PWA (v1.9): offline service worker + install prompt + tap-to-apply updates.
 // Added 2026-10-20. Self-contained: does not modify the main app script.
-const SF_APP_VERSION='1.8';
+const SF_APP_VERSION='1.9';
 let sfReg=null, sfWaiting=null, sfReloading=false, sfPrompt=null;
 function sfShowBanner(){var b=document.getElementById('sfUpdateBanner'); if(b)b.style.display='block';}
 if('serviceWorker' in navigator){
