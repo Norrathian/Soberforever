@@ -176,6 +176,7 @@
   .smkdot{display:inline-block; width:22px; height:22px; border-radius:50%; background:var(--bg2); border:1px solid var(--line); margin:0 6px 6px 0; vertical-align:middle;}
   .smkdot.free{background:var(--good); border-color:transparent;}
   .smkdot.smoked{background:var(--warn); border-color:transparent;}
+  .smkdot.soon{background:transparent; border-style:dashed;}
   .habitrow{display:flex; align-items:center; gap:10px; padding:9px 4px; border-bottom:1px solid var(--line);}
   .habitrow:last-child{border-bottom:none;}
   .habitcheck{width:30px; height:30px; border-radius:9px; border:2px solid var(--line); background:var(--bg2); flex:0 0 auto; display:flex; align-items:center; justify-content:center; font-size:1rem; color:#fff; cursor:pointer;}
@@ -324,6 +325,10 @@
       <p class="center" style="margin:0;" id="smokeTodayStripText"></p>
     </div>
 
+    <div class="card hidden" id="twoQuitsStripCard">
+      <p class="center" style="margin:0;" id="twoQuitsStripText"></p>
+    </div>
+
     <div class="card">
       <h2>&#x1F4C5; Next meeting</h2>
       <p class="muted center" id="meetNameLabel" style="margin:0 0 4px;"></p>
@@ -410,6 +415,27 @@
         </div>
       </div>
       <div id="milestoneList" class="mt12"></div>
+    </div>
+
+    <div class="card" id="twoQuitsCard">
+      <h2>&#x1F91D; Two Quits, One Day</h2>
+      <p class="muted" style="margin-top:0;">One day, two quits. A day only counts when both stay clean — a slip day just pauses, it never resets anything.</p>
+      <div class="row" style="gap:10px;">
+        <div class="numbox" style="flex:1; text-align:center;"><div class="n" id="tqAlcDays">0</div><div class="l">days sober</div></div>
+        <div class="numbox" style="flex:1; text-align:center;"><div class="n" id="tqSmkDays">0</div><div class="l">days smoke-free</div></div>
+      </div>
+      <p class="muted center" id="tqSmkStatus" style="margin:8px 0 0;"></p>
+      <div class="center mt12">
+        <div style="font-size:2rem; font-weight:800; font-variant-numeric:tabular-nums;" id="tqCombCount">0</div>
+        <div class="muted" style="font-size:.72rem; text-transform:uppercase; letter-spacing:1px;">combined clean days</div>
+        <p class="muted" id="tqCombNote" style="margin:6px 0 0;"></p>
+      </div>
+      <div class="mt12" id="tqStrip"></div>
+      <p class="muted" style="font-size:.8rem; margin:6px 0 0;" id="tqStripLegend"></p>
+      <h3 class="mt12" style="margin-bottom:6px;">Combined milestones</h3>
+      <div id="tqMsList"></div>
+      <h3 class="mt12" style="margin-bottom:6px;">When both urges hit together</h3>
+      <div id="tqPairs"></div>
     </div>
 
     <div class="card">
@@ -3477,6 +3503,8 @@ $("ciSave").addEventListener("click", function(){
     : "Logged for " + fmtDate(k) + ". No judgment here — every day is a new one.";
   if(ciStatus === "drank") $("recommitOffer").classList.remove("hidden");
   renderRhythm();
+  renderTwoQuits();
+  renderTwoQuitsStrip();
 });
 
 /* ============ 7-DAY RHYTHM ============ */
@@ -5388,6 +5416,8 @@ function saveSmokeCheckin(status){
   s.smokeCheckins[todayKey()] = {status:status, craving:smokeCiCraving||0, triggers:smokeCiTriggers.slice()};
   smokeCiStatus = status;
   saveState(); renderSmokeCheckin();
+  renderTwoQuits();
+  renderTwoQuitsStrip();
 }
 function renderSmokeCheckin(){
   const s = smk();
@@ -5584,6 +5614,197 @@ $("smokeSlipSave").addEventListener("click", function(){
   $("smokeSlipOffer").classList.add("hidden");
   renderSmokeSlips();
 });
+
+/* ============ TWO QUITS, ONE DAY ============ */
+/* Combined alcohol + smoking view. The combined era starts on the smoking
+   quit day (Fri Nov 20, 2026): a day counts as a combined clean day only
+   when BOTH daily check-ins for that date are logged and clean. Slip model
+   (a): a slip on either track earns no combined credit for that day and
+   shows as "paused" — it never resets the count and never touches either
+   separate streak. A day with a missing check-in on either track is
+   "unlogged": no credit, no penalty. Everything derives from existing
+   check-in records; no new state fields. */
+const COMB_MS = [
+  {d:1, label:"1 combined day"},
+  {d:7, label:"7 combined days"},
+  {d:30, label:"30 combined days"},
+  {d:90, label:"90 combined days"},
+  {d:180, label:"180 combined days"},
+  {d:365, label:"365 combined days"}
+];
+/* The day both quits are live. Prefer the actual quit date once the
+   quit-day handoff has set it; otherwise the ladder's derived quit date;
+   otherwise the planned Nov 20, 2026. */
+function combStartKey(){
+  const s = smk();
+  if(s.mode === "quit" && s.quitDate) return localKey(new Date(s.quitDate));
+  const tq = taperQuitDateKey();
+  if(tq) return tq;
+  return "2026-11-20";
+}
+/* One day's combined status. `start` is the combined-era start key and `s`
+   the smoke state, passed in so callers don't re-merge smoke state per day. */
+function combDayStatus(key, start, s){
+  if(key < start) return "upcoming";
+  const a = state.checkins[key];
+  const c = s.smokeCheckins[key];
+  if(!a || !c) return "unlogged";
+  return (a.status === "sober" && c.status === "free") ? "clean" : "paused";
+}
+function combCount(){
+  const start = combStartKey();
+  const today = todayKey();
+  if(today < start) return 0;
+  const s = smk();
+  let n = 0, k = start;
+  while(k <= today){
+    if(combDayStatus(k, start, s) === "clean") n++;
+    k = taperAddDays(k, 1);
+  }
+  return n;
+}
+/* Days where both urges landed on the same day: both check-ins exist and
+   both cravings were logged above their "none" baseline (alcohol 1, smoke 0).
+   Returns the paired-day count and the trigger tags most common on those
+   days (a tag counts once per day even if both tracks logged it). */
+function combTriggerPairs(){
+  const s = smk();
+  const counts = {};
+  let days = 0;
+  Object.keys(state.checkins).forEach(function(k){
+    const a = state.checkins[k];
+    const c = s.smokeCheckins[k];
+    if(!a || !c) return;
+    if(!((a.craving || 0) >= 2 && (c.craving || 0) >= 1)) return;
+    days++;
+    const seen = {};
+    (a.triggers || []).concat(c.triggers || []).forEach(function(t){ seen[t] = true; });
+    Object.keys(seen).forEach(function(t){ counts[t] = (counts[t] || 0) + 1; });
+  });
+  const top = Object.keys(counts).sort(function(x, y){ return counts[y] - counts[x]; }).slice(0, 5);
+  return {days: days, top: top.map(function(t){ return {tag: t, n: counts[t]}; })};
+}
+function renderTwoQuits(){
+  const s = smk();
+  const start = combStartKey();
+  const today = todayKey();
+  $("tqAlcDays").textContent = state.soberDate ? daysElapsed().toLocaleString() : "\u2014";
+  let smkBig = "\u2014", smkNote = "";
+  if(!s.mode){
+    smkNote = "Not set up yet \u2014 pick a plan on the Smoke-Free tab and the count starts on your quit day.";
+  } else if(s.mode === "quit" && s.quitDate){
+    smkBig = smokeDays().toLocaleString();
+    smkNote = "Smoke-free since " + fmtDate(localKey(new Date(s.quitDate))) + ".";
+  } else if(today < start){
+    smkBig = "0";
+    const cur = taperTodayStep();
+    if(taperPreStart()){
+      smkNote = "Taper starts " + fmtDate(s.taper.startDate) + " at 6am \u2014 quit day " + fmtDate(start) + ".";
+    } else if(taperActive() && cur){
+      const total = taperSteps().filter(function(st){ return st.limit > 0; }).length;
+      smkNote = "Taper day " + (taperStepIndex(cur)+1) + " of " + total + " \u2014 " + cur.limit + " today, quit day " + fmtDate(start) + ".";
+    } else {
+      smkNote = "Quit day " + fmtDate(start) + " \u2014 taper paused; turn the ladder back on to keep counting down.";
+    }
+  } else {
+    smkBig = "0";
+    smkNote = "Today's the day \u2014 0 cigarettes. Press \u201CI'm quit\u201D on the Smoke-Free tab to start your smoke-free counter.";
+  }
+  $("tqSmkDays").textContent = smkBig;
+  $("tqSmkStatus").textContent = smkNote;
+  const n = combCount();
+  $("tqCombCount").textContent = n.toLocaleString();
+  $("tqCombNote").textContent = !s.mode
+    ? "Set up the Smoke-Free tab and the combined count starts on your quit day."
+    : (today < start
+      ? "The combined count starts " + fmtDate(start) + " \u2014 a day counts only when both check-ins are clean."
+      : "Days since " + fmtDate(start) + " where both check-ins were clean. A slip day just pauses \u2014 it never resets this count.");
+  let html = "";
+  for(let i=13;i>=0;i--){
+    const d = new Date(); d.setDate(d.getDate()-i);
+    const k = localKey(d);
+    const st = combDayStatus(k, start, s);
+    const cls = st === "clean" ? "free" : (st === "paused" ? "smoked" : (st === "upcoming" ? "soon" : ""));
+    const label = st === "clean" ? "both clean"
+      : (st === "paused" ? "paused \u2014 a slip, no reset"
+      : (st === "upcoming" ? "before the combined count started" : "not logged yet"));
+    html += '<span class="smkdot ' + cls + '" title="' + esc(fmtDate(k) + " \u2014 " + label) + '"></span>';
+  }
+  $("tqStrip").innerHTML = html;
+  $("tqStripLegend").innerHTML =
+    '<span class="smkdot free" style="width:12px;height:12px;margin:0 4px 0 0;"></span>both clean ' +
+    '<span class="smkdot smoked" style="width:12px;height:12px;margin:0 4px 0 10px;"></span>paused ' +
+    '<span class="smkdot soon" style="width:12px;height:12px;margin:0 4px 0 10px;"></span>before ' + esc(fmtDate(start)) + ' ' +
+    '<span class="smkdot" style="width:12px;height:12px;margin:0 4px 0 10px;"></span>not logged';
+  let mhtml = "", nextFlag = true;
+  for(const m of COMB_MS){
+    const done = n >= m.d;
+    const isNext = !done && nextFlag;
+    if(isNext) nextFlag = false;
+    mhtml += '<div class="msrow' + (done ? " done" : "") + (isNext ? " next" : "") + '">' +
+      '<div class="msdot">' + (done ? "&#x2713;" : (isNext ? "&#x25B8;" : m.d)) + "</div>" +
+      '<div class="mslabel">' + esc(m.label) + (done ? ' <span class="muted">\u2014 reached</span>' : "") + "</div></div>";
+  }
+  $("tqMsList").innerHTML = mhtml;
+  const pairs = combTriggerPairs();
+  if(!pairs.days){
+    $("tqPairs").innerHTML = '<p class="muted" style="margin:0;">No paired-craving days logged yet \u2014 they\u2019ll show up here when both urges land on the same day.</p>';
+  } else {
+    const mx = pairs.top.length ? pairs.top[0].n : 0;
+    let phtml = '<p style="margin:0 0 8px;"><strong>' + pairs.days + '</strong> day' + (pairs.days === 1 ? "" : "s") + ' where both cravings hit on the same day.</p>';
+    pairs.top.forEach(function(p){
+      const pct = mx ? Math.round(p.n/mx*100) : 0;
+      phtml += '<div class="pbar"><div class="pl">' + esc(p.tag) + '</div>' +
+        '<div class="track"><div class="fillbar" style="width:' + pct + '%"></div></div>' +
+        '<div class="pc">' + p.n + "</div></div>";
+    });
+    phtml += '<p class="muted mt8" style="margin-bottom:0;">The sparks that most often show up on days both urges hit.</p>';
+    $("tqPairs").innerHTML = phtml;
+  }
+}
+function renderTwoQuitsStrip(){
+  const card = $("twoQuitsStripCard"), txt = $("twoQuitsStripText");
+  const s = smk();
+  if(!s.mode){ card.classList.add("hidden"); return; }
+  const start = combStartKey();
+  const today = todayKey();
+  let msg;
+  if(today < start){
+    const cur = taperTodayStep();
+    msg = "\uD83E\uDD1D Two quits start " + fmtDate(start) +
+      ((taperActive() && cur)
+        ? " \u2014 taper day " + (taperStepIndex(cur)+1) + " of " + taperSteps().filter(function(st){ return st.limit > 0; }).length + ", " + cur.limit + " today."
+        : ".");
+  } else {
+    const n = combCount();
+    msg = "\uD83E\uDD1D " + n + " combined clean day" + (n === 1 ? "" : "s") + " \u2014 both quits, one day.";
+  }
+  txt.textContent = msg;
+  card.classList.remove("hidden");
+}
+/* Celebrate a newly reached combined milestone once, reusing the
+   celebrated-IDs pattern (comb1, comb7, ...). Earned state is always
+   derived from the count in renderTwoQuits, so old saves show correctly
+   even before this runs. */
+function checkCombBadges(){
+  const start = combStartKey();
+  if(todayKey() < start) return;
+  const n = combCount();
+  for(const m of COMB_MS){
+    const id = "comb" + m.d;
+    if(n >= m.d && state.celebrated.indexOf(id) === -1){
+      state.celebrated.push(id);
+      saveState();
+      showCelebration(
+        m.label + " \u2014 both quits!",
+        "Two quits, one day. That's the whole game.",
+        m.label.toUpperCase() + " \u2014 BOTH QUITS",
+        "Soberforever \u2022 one day at a time"
+      );
+      return;
+    }
+  }
+}
 
 /* ============ RENDER ALL / INIT ============ */
 /* ============ FITNESS ============ */
@@ -5977,6 +6198,8 @@ function renderAll(){
   renderPocket();
   renderFitness();
   renderSmoke();
+  renderTwoQuits();
+  renderTwoQuitsStrip();
   renderPatterns();
   renderPatternTags();
   renderWeight();
@@ -5996,18 +6219,19 @@ maybeOnboard();
 renderAll();
 checkMilestones();
 checkChips();
+checkCombBadges();
 checkLetters();
 setInterval(function(){
   renderHero();
   renderCountdown();
   renderSmokeTick();
 }, 1000);
-setInterval(function(){ checkMilestones(); checkChips(); checkLetters(); checkFitnessBadges(); checkSmokeBadges(); }, 60000);
+setInterval(function(){ checkMilestones(); checkChips(); checkCombBadges(); checkLetters(); checkFitnessBadges(); checkSmokeBadges(); }, 60000);
 </script>
 <script>
-// PWA (v1.11): offline service worker + install prompt + tap-to-apply updates.
+// PWA (v1.12): offline service worker + install prompt + tap-to-apply updates.
 // Added 2026-10-20. Self-contained: does not modify the main app script.
-const SF_APP_VERSION='1.11';
+const SF_APP_VERSION='1.12';
 let sfReg=null, sfWaiting=null, sfReloading=false, sfPrompt=null;
 function sfShowBanner(){var b=document.getElementById('sfUpdateBanner'); if(b)b.style.display='block';}
 if('serviceWorker' in navigator){
