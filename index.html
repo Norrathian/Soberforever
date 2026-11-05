@@ -4941,11 +4941,40 @@ function migrateSmokeTaper(t){
   t.startDate = d.startDate;
   t.scheduleRev = 2;
 }
+/* Quit-date key for one taper object, computed directly from its steps so
+   this can run inside smk() without calling taperActive()/taperQuitDateKey()
+   (both call smk() — that would recurse). */
+function taperQuitKeyFor(t){
+  if(!t || !t.startDate || !t.steps || !t.steps.length) return null;
+  let n = 0;
+  for(let i=0;i<t.steps.length-1;i++) n += t.steps[i].days || 0;
+  return taperAddDays(t.startDate, n);
+}
+/* Ladder is the source of truth while tapering. A stored mode of "quit" (or
+   "planning") with a quit date from before the ladder existed starts the
+   smoke-free counter and hides the tap counter, even though quit day
+   (Nov 20) hasn't arrived — the same two-stories bug as the Settings
+   conflict fixed in v1.9. While the ladder is active and today is before
+   its derived quit date, force the mode back to "cutting" and drop the
+   unearned quit date. Idempotent, in-place, no save here (same pattern as
+   migrateSmokeTaper). Never runs when the ladder is paused, on/after the
+   quit date, when no smoke plan was ever picked (mode null — the setup
+   screen must stay), or when no quit date can be derived. */
+function normalizeSmokeMode(){
+  const s = state.smoke;
+  if(!s || !s.taper || !s.taper.active) return;
+  if(!s.mode || s.mode === "cutting") return;
+  const qk = taperQuitKeyFor(s.taper);
+  if(!qk || todayKey() >= qk) return;
+  s.mode = "cutting";
+  s.quitDate = null;
+}
 function smk(){
   if(!state.smoke || typeof state.smoke !== "object") state.smoke = defaultSmoke();
   else state.smoke = Object.assign(defaultSmoke(), state.smoke);
   if(!state.smoke.taper || typeof state.smoke.taper !== "object") state.smoke.taper = defaultSmoke().taper;
   else migrateSmokeTaper(state.smoke.taper);
+  normalizeSmokeMode();
   return state.smoke;
 }
 function smokeQuitTime(){ const s = smk(); return s.quitDate ? new Date(s.quitDate).getTime() : null; }
@@ -6229,9 +6258,9 @@ setInterval(function(){
 setInterval(function(){ checkMilestones(); checkChips(); checkCombBadges(); checkLetters(); checkFitnessBadges(); checkSmokeBadges(); }, 60000);
 </script>
 <script>
-// PWA (v1.12): offline service worker + install prompt + tap-to-apply updates.
+// PWA (v1.13): offline service worker + install prompt + tap-to-apply updates.
 // Added 2026-10-20. Self-contained: does not modify the main app script.
-const SF_APP_VERSION='1.12';
+const SF_APP_VERSION='1.13';
 let sfReg=null, sfWaiting=null, sfReloading=false, sfPrompt=null;
 function sfShowBanner(){var b=document.getElementById('sfUpdateBanner'); if(b)b.style.display='block';}
 if('serviceWorker' in navigator){
