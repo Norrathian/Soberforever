@@ -1419,9 +1419,13 @@ function defaultSmoke(){
   return {
     mode:null, quitDate:null, cigsPerDay:20, packPrice:8, dailyLimit:10,
     preQuit:{}, cigLogs:{}, smokeCheckins:{}, smokeReasons:[], smokeSlips:[],
-    taper:{active:true, startDate:"2026-11-05", steps:[
-      {limit:15, days:3}, {limit:12, days:3}, {limit:9, days:3},
-      {limit:6, days:3}, {limit:3, days:3}, {limit:0, days:0}
+    taper:{active:true, startDate:"2026-11-05", scheduleRev:2, steps:[
+      {limit:15, days:1}, {limit:14, days:1}, {limit:13, days:1},
+      {limit:12, days:1}, {limit:11, days:1}, {limit:10, days:1},
+      {limit:9, days:1}, {limit:8, days:1}, {limit:7, days:1},
+      {limit:6, days:1}, {limit:5, days:1}, {limit:4, days:1},
+      {limit:3, days:1}, {limit:2, days:1}, {limit:1, days:1},
+      {limit:0, days:0}
     ]}
   };
 }
@@ -4892,10 +4896,28 @@ const SMOKE_PREQUIT = [
   "Stock gum, mints, or toothpicks",
   "Make a plan for my top triggers"
 ];
+/* Schedule revision: rev 2 is the daily countdown (15 down to 1, one a day,
+   then 0 on Nov 20). Older saves carry the flat 3-day steps; migrate them in
+   place so the phone shows the new schedule instead of the saved old one.
+   Holds on the old schedule can't map day-for-day onto the new one, so
+   migration resets holds — fine here, the taper hadn't started yet when rev 2
+   shipped. Only steps/startDate/scheduleRev are touched: active and every
+   other smoke field are preserved. Mutates the taper object in place so no
+   reference held across a smk() call goes stale (see the save-guard note in
+   renderSettings). */
+function migrateSmokeTaper(t){
+  if(!t || typeof t !== "object") return;
+  if(t.scheduleRev === 2) return;
+  const d = defaultSmoke().taper;
+  t.steps = d.steps;
+  t.startDate = d.startDate;
+  t.scheduleRev = 2;
+}
 function smk(){
   if(!state.smoke || typeof state.smoke !== "object") state.smoke = defaultSmoke();
   else state.smoke = Object.assign(defaultSmoke(), state.smoke);
   if(!state.smoke.taper || typeof state.smoke.taper !== "object") state.smoke.taper = defaultSmoke().taper;
+  else migrateSmokeTaper(state.smoke.taper);
   return state.smoke;
 }
 function smokeQuitTime(){ const s = smk(); return s.quitDate ? new Date(s.quitDate).getTime() : null; }
@@ -5983,9 +6005,9 @@ setInterval(function(){
 setInterval(function(){ checkMilestones(); checkChips(); checkLetters(); checkFitnessBadges(); checkSmokeBadges(); }, 60000);
 </script>
 <script>
-// PWA (v1.9): offline service worker + install prompt + tap-to-apply updates.
+// PWA (v1.11): offline service worker + install prompt + tap-to-apply updates.
 // Added 2026-10-20. Self-contained: does not modify the main app script.
-const SF_APP_VERSION='1.10';
+const SF_APP_VERSION='1.11';
 let sfReg=null, sfWaiting=null, sfReloading=false, sfPrompt=null;
 function sfShowBanner(){var b=document.getElementById('sfUpdateBanner'); if(b)b.style.display='block';}
 if('serviceWorker' in navigator){
