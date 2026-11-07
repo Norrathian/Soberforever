@@ -325,6 +325,13 @@
       <div><span class="streak" id="pledgeStreak">&#x1F525; 0-day pledge streak</span></div>
     </div>
 
+    <div class="card center" id="badDayCard">
+      <h2>&#x1F327;&#xFE0F; Having a grey day?</h2>
+      <p class="muted" style="margin-bottom:0;">Not a craving — just a hard, flat day. One tap lines up a few gentle things that usually help, one at a time. No rush, no judgment.</p>
+      <button id="badDayStart" class="mt12">Start a slow day</button>
+      <p class="muted mt8" id="badDayLast" style="margin-bottom:0;"></p>
+    </div>
+
     <div class="card hidden" id="twoQuitsStripCard">
       <p class="center" style="margin:0;" id="twoQuitsStripText"></p>
     </div>
@@ -470,6 +477,20 @@
       </div>
       <p class="muted mt8" id="voiceMsg" style="margin-bottom:0;"></p>
       <p class="muted mt8" style="margin-bottom:0;">Voice notes live in this browser only — they aren't part of the JSON backup in Settings, so they won't move to a new phone.</p>
+    </div>
+
+    <div class="card">
+      <h2>&#x1F49B; Messages from the people who love you</h2>
+      <p class="muted" style="margin-top:0;">Hand the phone to them on a good day — thirty seconds from someone who loves you can carry a whole craving. These live on this phone only, just like your own notes.</p>
+      <div id="famNotesList"></div>
+      <label class="lbl" for="famName">Who's recording?</label>
+      <input id="famName" placeholder="e.g. Haley" maxlength="40">
+      <div class="row mt8">
+        <button id="famRecBtn" class="small">&#x1F534; Record</button>
+        <button id="famStopBtn" class="small danger hidden">Stop</button>
+        <span class="rectime" id="famRecTime"></span>
+      </div>
+      <p class="muted mt8" id="famMsg" style="margin-bottom:0;"></p>
     </div>
 
     <div class="card" id="dailyPhotoCard">
@@ -673,6 +694,15 @@
         <button id="letterSave" class="small">Seal the letter</button>
       </div>
       <div id="letterList" class="mt12"></div>
+    </div>
+
+    <div class="card">
+      <h2>&#x1F91D; Pass it on</h2>
+      <p class="muted" style="margin-top:0;">A note for someone on day one, written from where you are now. What got you through the first week? What would you tell them? Keep them here — hand one to Ed or anyone else who's starting out.</p>
+      <label class="lbl" for="pioBody">Your note</label>
+      <textarea id="pioBody" placeholder="If you're on day one, here's what I want you to know..."></textarea>
+      <button id="pioSave" class="small mt8">Save this note</button>
+      <div id="pioList" class="mt12"></div>
     </div>
 
     <div class="card">
@@ -1091,6 +1121,7 @@
       <p class="muted" style="margin-bottom:0;">Hear your own voice from a good day — or look at the proof that this is working.</p>
       <div class="row mt12" style="justify-content:center;">
         <button id="sosVoiceBtn" class="small">&#x1F399;&#xFE0F; Hear from sober you</button>
+        <button id="sosFamilyBtn" class="small">&#x1F49B; Hear from family</button>
         <button id="sosProofBtn" class="small ghost">&#x1F4F8; See your proof</button>
         <button id="sosRepsBtn" class="small ghost">&#x1F5E3;&#xFE0F; Practice your lines</button>
       </div>
@@ -1451,6 +1482,18 @@
   </div>
 </div>
 
+<!-- BAD-DAY OVERLAY -->
+<div id="badDayOverlay" class="overlay hidden">
+  <div class="sheet" style="text-align:left;">
+    <div id="badDayBody"></div>
+    <div class="tapedots" id="badDayDots"></div>
+    <div class="row mt12" style="justify-content:space-between;">
+      <button id="badDayBack" class="small ghost">Back</button>
+      <button id="badDayClose" class="small ghost">Close</button>
+    </div>
+  </div>
+</div>
+
 <!-- POCKET MEETING OVERLAY -->
 <div id="pocketOverlay" class="overlay hidden">
   <div class="sheet" style="text-align:left;">
@@ -1528,7 +1571,7 @@ function defaultState(){
     sleepLog:{}, habits:[], gratitude:[],
     sosContacts:[], water:{},
     slips:[], futureLetters:[], promptIdx:0, reduceMotion:null, textSize:"normal",
-    voiceNotes:[], evidence:[],
+    voiceNotes:[], evidence:[], familyNotes:[], passItOn:[], badDays:[],
     battlePlans:[], stoleList:[],
     refusalLines:[], refusalRepCount:0,
     pocketIdx:0,
@@ -2267,12 +2310,125 @@ $("tapeBody").addEventListener("click", function(e){
     if(el && el.scrollIntoView) el.scrollIntoView({behavior:state.reduceMotion ? "auto" : "smooth", block:"center"});
   }
 });
+
+/* ============ BAD-DAY MODE ============
+   For grey, flat, non-craving days — NOT a craving tool, so it lives on
+   the Today tab and never touches the SOS timers. One tap opens a slow
+   guided sequence through five proven comforts (walk, whistle, bread,
+   call Ed, photos). Each step offers "This helped" or "Skip"; finishing
+   logs what helped to state.badDays[] (date + helped ids). Closing early
+   logs nothing. A second run on the same day updates that day's record
+   instead of adding a duplicate. */
+const BAD_DAY_COMFORTS = [
+  {id:"walk", icon:"\uD83D\uDEB6", title:"Step outside",
+   html:"<p>Even ten minutes counts. A short walk \u2014 the morning route, or just around the block. Fresh air, moving legs, no destination needed.</p>"},
+  {id:"whistle", icon:"\uD83C\uDFB5", title:"Pick up the whistle",
+   html:"<p>One tune. You don't have to play it well \u2014 you just have to play it. The D whistle is probably where you left it.</p>"},
+  {id:"bread", icon:"\uD83C\uDF5E", title:"Something warm",
+   html:"<p>Put the kettle on. If there's bread you made, have a slice. Warm food, warm drink, a minute sitting down. Nothing to fix \u2014 just something warm.</p>"},
+  {id:"call", icon:"\uD83D\uDCDE", title:"Call Ed",
+   html:"<p>Ring Ed, or someone you trust. You don't have to explain the whole day \u2014 \u201Cgrey day, just checking in\u201D is enough.</p>"},
+  {id:"photos", icon:"\uD83D\uDCF8", title:"Look at the proof",
+   html:"<p>Look at how far you've come \u2014 not to hype yourself up, just to see it plainly.</p>"}
+];
+const BAD_DAY_LABELS = {walk:"the walk", whistle:"the whistle", bread:"something warm", call:"calling Ed", photos:"the photos"};
+let badDayIdx = 0, badDayHelped = [], badDayPhotoUrl = null;
+function badDayEdContact(){
+  return (state.sosContacts || []).find(function(c){ return /ed/i.test(c.name || ""); }) || null;
+}
+function renderBadDayCard(){
+  const el = $("badDayLast");
+  if(!el) return;
+  const last = (state.badDays || []).slice(-1)[0];
+  if(!last){ el.textContent = "No grey days logged yet."; return; }
+  const helped = (last.helped || []).map(function(id){ return BAD_DAY_LABELS[id] || id; });
+  el.textContent = "Last grey day: " + fmtDate(last.date) + " \u2014 " +
+    (helped.length ? "what helped: " + helped.join(", ") + "." : "nothing landed that day, and that's okay.");
+}
+function renderBadDayStep(){
+  const s = BAD_DAY_COMFORTS[badDayIdx];
+  let extra = "";
+  if(s.id === "call"){
+    const ed = badDayEdContact();
+    if(ed) extra = '<div class="mt12"><a class="tel" href="tel:' + esc(ed.phone.replace(/[^+\d]/g, "")) + '">Call ' + esc(ed.name) + '</a></div>';
+  }
+  if(s.id === "photos" && badDayPhotoUrl){
+    extra = '<div class="mt12"><img class="evbig" src="' + esc(badDayPhotoUrl) + '" alt="Your latest daily photo"></div>';
+  }
+  $("badDayBody").innerHTML = '<div class="tapein"><p class="muted" style="margin:0 0 4px;">Step ' + (badDayIdx + 1) + " of " + BAD_DAY_COMFORTS.length + " \u2014 no rush</p>" +
+    "<h2>" + s.icon + " " + esc(s.title) + "</h2>" + s.html + extra +
+    '<div class="row mt12"><button id="badDayHelped" class="small">This helped</button>' +
+    '<button id="badDaySkip" class="small ghost">Skip</button></div></div>';
+  let dots = "";
+  for(let i = 0; i < BAD_DAY_COMFORTS.length; i++) dots += "<span" + (i === badDayIdx ? ' class="on"' : "") + "></span>";
+  $("badDayDots").innerHTML = dots;
+  $("badDayBack").classList.remove("hidden");
+  $("badDayBack").disabled = badDayIdx === 0;
+}
+function renderBadDayDone(){
+  const helped = badDayHelped.map(function(id){ return BAD_DAY_LABELS[id] || id; });
+  $("badDayBody").innerHTML = '<div class="tapein center"><div style="font-size:3rem;">\uD83C\uDF27\uFE0F</div>' +
+    "<h2>That's enough for today.</h2>" +
+    (helped.length
+      ? "<p class=\"muted\">What helped today: <strong>" + esc(helped.join(", ")) + "</strong>. Worth remembering for the next grey day.</p>"
+      : "<p class=\"muted\">Nothing landed today \u2014 that's okay. The day still counts, and tomorrow is a fresh one.</p>") +
+    '<button id="badDayDone" style="width:100%;">Done \u2014 log today</button></div>';
+  $("badDayDots").innerHTML = "";
+  $("badDayBack").classList.add("hidden");
+}
+function openBadDay(){
+  badDayIdx = 0; badDayHelped = [];
+  const latest = (state.dailyPhotos || []).slice(-1)[0];
+  const show = function(){
+    renderBadDayStep();
+    $("badDayOverlay").classList.remove("hidden");
+  };
+  if(latest){
+    mediaGet("photos", latest.id).then(function(blob){
+      if(blob){
+        if(badDayPhotoUrl){ try{ URL.revokeObjectURL(badDayPhotoUrl); }catch(e){} }
+        badDayPhotoUrl = URL.createObjectURL(blob);
+      }
+      show();
+    }).catch(function(){ show(); });
+  } else show();
+}
+function closeBadDay(){
+  $("badDayOverlay").classList.add("hidden");
+  if(badDayPhotoUrl){ try{ URL.revokeObjectURL(badDayPhotoUrl); }catch(e){} badDayPhotoUrl = null; }
+}
+$("badDayStart").addEventListener("click", openBadDay);
+$("badDayClose").addEventListener("click", closeBadDay);
+$("badDayBack").addEventListener("click", function(){ if(badDayIdx > 0){ badDayIdx--; renderBadDayStep(); } });
+$("badDayBody").addEventListener("click", function(e){
+  const t = e.target;
+  if(!t || !t.id) return;
+  if(t.id === "badDayHelped"){
+    const id = BAD_DAY_COMFORTS[badDayIdx].id;
+    if(badDayHelped.indexOf(id) === -1) badDayHelped.push(id);
+    if(badDayIdx < BAD_DAY_COMFORTS.length - 1){ badDayIdx++; renderBadDayStep(); }
+    else renderBadDayDone();
+  } else if(t.id === "badDaySkip"){
+    if(badDayIdx < BAD_DAY_COMFORTS.length - 1){ badDayIdx++; renderBadDayStep(); }
+    else renderBadDayDone();
+  } else if(t.id === "badDayDone"){
+    const k = todayKey();
+    const existing = (state.badDays || []).find(function(b){ return b.date === k; });
+    if(existing){
+      badDayHelped.forEach(function(id){ if(existing.helped.indexOf(id) === -1) existing.helped.push(id); });
+    } else {
+      state.badDays.push({id:uid(), date:k, helped:badDayHelped.slice()});
+    }
+    saveState(); closeBadDay(); renderBadDayCard();
+  }
+});
 document.addEventListener("keydown", function(e){
   if(e.key !== "Escape") return;
   if(!$("storyOverlay").classList.contains("hidden")) closeStory();
   else if(!$("tapeOverlay").classList.contains("hidden")) closeTape();
   else if(!$("dailyPhotoOverlay").classList.contains("hidden")) closeDailyPhoto();
   else if(!$("pocketOverlay").classList.contains("hidden")) closePocket();
+  else if(!$("badDayOverlay").classList.contains("hidden")) closeBadDay();
 });
 
 /* ============ SOS MEDIA (shared status line) ============ */
@@ -2280,16 +2436,20 @@ function renderSosMedia(){
   const msg = $("sosMediaMsg");
   if(!msg) return;
   if(voicePlayingId){
-    msg.textContent = "Playing a message from sober you\u2026 tap \u201CHear from sober you\u201D again to stop it.";
+    const fam = (state.familyNotes || []).some(function(n){ return n.id === voicePlayingId; });
+    msg.textContent = fam
+      ? "Playing a message from your family\u2026 tap \u201CHear from family\u201D again to stop it."
+      : "Playing a message from sober you\u2026 tap \u201CHear from sober you\u201D again to stop it.";
     return;
   }
-  const vn = state.voiceNotes.length, ev = (state.dailyPhotos || []).length;
-  if(!vn && !ev){
+  const vn = state.voiceNotes.length, fn = (state.familyNotes || []).length, ev = (state.dailyPhotos || []).length;
+  if(!vn && !fn && !ev){
     msg.textContent = "Nothing here yet \u2014 on a good day, record a voice note or add a proof photo on the Journey tab. Future you will be glad you did.";
     return;
   }
   const parts = [];
   if(vn) parts.push(vn + (vn === 1 ? " voice note" : " voice notes") + " from sober you");
+  if(fn) parts.push(fn + (fn === 1 ? " voice note" : " voice notes") + " from family");
   if(ev) parts.push(ev + (ev === 1 ? " timeline photo" : " timeline photos"));
   msg.textContent = "Waiting for you: " + parts.join(" and ") + ".";
 }
@@ -2349,6 +2509,58 @@ function renderVoiceNotes(){
   }
   renderSosMedia();
 }
+/* ============ FAMILY VOICE NOTES ============
+   Same recording path and the same IndexedDB "audio" store as your own
+   voice notes — the only difference is the metadata: a name (who
+   recorded it) instead of a label. Playback shares the single
+   voicePlayingId channel, so a family note stops your own note and
+   vice versa. */
+function renderFamilyNotes(){
+  const el = $("famNotesList");
+  if(!el) return;
+  const ok = voiceSupported();
+  $("famRecBtn").disabled = !ok;
+  if(!ok){
+    $("famMsg").textContent = "Voice recording isn't supported in this browser, so notes can't be recorded or kept here.";
+  }
+  if(!state.familyNotes.length){
+    el.innerHTML = '<p class="muted" style="margin:0;">No notes yet. On a good day, hand the phone to someone who loves you \u2014 thirty seconds is plenty.</p>';
+  } else {
+    el.innerHTML = "";
+    state.familyNotes.slice().reverse().forEach(function(n){
+      const div = document.createElement("div");
+      div.className = "item";
+      div.innerHTML = '<div class="meta">' + esc(n.name || "Family") + " &middot; " + esc(fmtDateTime(new Date(n.ts).toISOString())) + " &middot; " + esc(fmtDur(n.dur)) + "</div>";
+      const acts = document.createElement("div");
+      acts.className = "actions";
+      const play = document.createElement("button");
+      play.className = "small"; play.textContent = voicePlayingId === n.id ? "Stop" : "Play";
+      play.addEventListener("click", function(){ toggleFamilyPlay(n); });
+      const del = document.createElement("button");
+      del.className = "small ghost"; del.textContent = "Delete";
+      del.addEventListener("click", function(){
+        if(!confirm("Delete this voice note?")) return;
+        if(voicePlayingId === n.id) stopVoicePlay();
+        state.familyNotes = state.familyNotes.filter(function(q){ return q.id !== n.id; });
+        mediaDelete("audio", n.id).catch(function(){});
+        saveState(); renderFamilyNotes();
+      });
+      acts.appendChild(play); acts.appendChild(del);
+      div.appendChild(acts); el.appendChild(div);
+    });
+  }
+  renderSosMedia();
+}
+function toggleFamilyPlay(n){
+  if(voicePlayingId === n.id){ stopVoicePlay(); renderFamilyNotes(); return; }
+  playVoiceNote(n).then(function(){
+    renderFamilyNotes();
+  }).catch(function(){
+    stopVoicePlay();
+    $("famMsg").textContent = "Couldn't play that note \u2014 it may no longer be stored in this browser.";
+    renderFamilyNotes();
+  });
+}
 function stopVoicePlay(){
   if(voiceAudio){ try{ voiceAudio.pause(); }catch(e){} voiceAudio = null; }
   if(voiceObjectUrl){ try{ URL.revokeObjectURL(voiceObjectUrl); }catch(e){} voiceObjectUrl = null; }
@@ -2362,7 +2574,7 @@ function playVoiceNote(n){
     voiceAudio = new Audio(voiceObjectUrl);
     voicePlayingId = n.id;
     voiceAudio.addEventListener("ended", function(){
-      stopVoicePlay(); renderVoiceNotes();
+      stopVoicePlay(); renderVoiceNotes(); renderFamilyNotes();
     });
     const p = voiceAudio.play();
     return p && typeof p.catch === "function" ? p.catch(function(){}) : p;
@@ -2384,38 +2596,61 @@ function voicePickMime(){
   for(let i = 0; i < types.length; i++){ if(MediaRecorder.isTypeSupported(types[i])) return types[i]; }
   return "";
 }
+/* Voice recording serves two lists: your own notes ("self") and family
+   notes ("family"). One MediaRecorder and one set of module state — the
+   target decides which buttons/labels are touched and where the finished
+   note lands. Family notes carry a name (who recorded it) instead of a
+   label. */
+let voiceRecTarget = "self";
+const VOICE_REC_UI = {
+  self: {recBtn:"voiceRecBtn", stopBtn:"voiceStopBtn", label:"voiceLabel", time:"voiceRecTime", msg:"voiceMsg"},
+  family: {recBtn:"famRecBtn", stopBtn:"famStopBtn", label:"famName", time:"famRecTime", msg:"famMsg"}
+};
+function voiceRecUi(){ return VOICE_REC_UI[voiceRecTarget] || VOICE_REC_UI.self; }
 function updateVoiceRecTime(){
   const s = Math.floor((Date.now() - voiceRecStart) / 1000);
-  $("voiceRecTime").textContent = "Recording\u2026 " + fmtDur(s) + " / 1:00";
+  $(voiceRecUi().time).textContent = "Recording\u2026 " + fmtDur(s) + " / 1:00";
 }
 function stopVoiceRecording(){
   if(voiceRec && voiceRec.state !== "inactive"){ try{ voiceRec.stop(); }catch(e){} }
 }
 function finishVoiceRecording(){
   if(voiceRecTimer){ clearInterval(voiceRecTimer); voiceRecTimer = null; }
-  $("voiceRecBtn").classList.remove("hidden");
-  $("voiceStopBtn").classList.add("hidden");
-  $("voiceLabel").disabled = false;
-  $("voiceRecTime").textContent = "";
+  const ui = voiceRecUi();
+  $(ui.recBtn).classList.remove("hidden");
+  $(ui.stopBtn).classList.add("hidden");
+  $(ui.label).disabled = false;
+  $(ui.time).textContent = "";
   const dur = Math.max(1, Math.round((Date.now() - voiceRecStart) / 1000));
   const mime = (voiceRec && voiceRec.mimeType) || "audio/webm";
   const chunks = voiceChunks;
   voiceRec = null; voiceChunks = [];
   const blob = new Blob(chunks, {type:mime});
-  if(!blob.size){ $("voiceMsg").textContent = "That recording came out empty \u2014 try again."; return; }
+  if(!blob.size){ $(ui.msg).textContent = "That recording came out empty \u2014 try again."; return; }
   const id = uid();
-  const label = $("voiceLabel").value.trim();
+  const target = voiceRecTarget;
   mediaPut("audio", id, blob).then(function(){
-    state.voiceNotes.push({id:id, ts:Date.now(), dur:dur, label:label});
-    $("voiceLabel").value = "";
-    saveState(); renderVoiceNotes();
-    $("voiceMsg").textContent = "Saved. Sober you just left a message for a rough night.";
+    if(target === "family"){
+      const name = $(ui.label).value.trim();
+      state.familyNotes.push({id:id, ts:Date.now(), dur:dur, name:name});
+      $(ui.label).value = "";
+      saveState(); renderFamilyNotes();
+      $(ui.msg).textContent = "Saved. That's one for the hard nights.";
+    } else {
+      const label = $(ui.label).value.trim();
+      state.voiceNotes.push({id:id, ts:Date.now(), dur:dur, label:label});
+      $(ui.label).value = "";
+      saveState(); renderVoiceNotes();
+      $(ui.msg).textContent = "Saved. Sober you just left a message for a rough night.";
+    }
   }).catch(function(){
-    $("voiceMsg").textContent = "Couldn't save that note in this browser.";
+    $(ui.msg).textContent = "Couldn't save that note in this browser.";
   });
 }
-$("voiceRecBtn").addEventListener("click", function(){
-  const msg = $("voiceMsg");
+function startVoiceRecording(target){
+  voiceRecTarget = target;
+  const ui = voiceRecUi();
+  const msg = $(ui.msg);
   if(!voiceSupported()){ msg.textContent = "Voice recording isn't supported in this browser."; return; }
   msg.textContent = "";
   navigator.mediaDevices.getUserMedia({audio:true}).then(function(stream){
@@ -2434,9 +2669,9 @@ $("voiceRecBtn").addEventListener("click", function(){
     try{ voiceRec.start(); }catch(e){ msg.textContent = "Recording couldn't start in this browser."; return; }
     voiceRecStart = Date.now();
     if(voicePlayingId) stopVoicePlay();
-    $("voiceRecBtn").classList.add("hidden");
-    $("voiceStopBtn").classList.remove("hidden");
-    $("voiceLabel").disabled = true;
+    $(ui.recBtn).classList.add("hidden");
+    $(ui.stopBtn).classList.remove("hidden");
+    $(ui.label).disabled = true;
     updateVoiceRecTime();
     voiceRecTimer = setInterval(function(){
       updateVoiceRecTime();
@@ -2445,8 +2680,11 @@ $("voiceRecBtn").addEventListener("click", function(){
   }).catch(function(){
     msg.textContent = "Microphone access was denied \u2014 no note recorded. You can allow it in your browser settings and try again.";
   });
-});
+}
+$("voiceRecBtn").addEventListener("click", function(){ startVoiceRecording("self"); });
 $("voiceStopBtn").addEventListener("click", stopVoiceRecording);
+$("famRecBtn").addEventListener("click", function(){ startVoiceRecording("family"); });
+$("famStopBtn").addEventListener("click", stopVoiceRecording);
 $("sosVoiceBtn").addEventListener("click", function(){
   const msg = $("sosMediaMsg");
   if(voicePlayingId){ stopVoicePlay(); renderVoiceNotes(); return; }
@@ -2461,6 +2699,23 @@ $("sosVoiceBtn").addEventListener("click", function(){
     msg.textContent = "Playing a message from sober you" + (n.label ? ": \u201C" + n.label + "\u201D" : "") + ". Tap the button again to stop it.";
   }).catch(function(){
     stopVoicePlay(); renderVoiceNotes();
+    msg.textContent = "Couldn't play a note \u2014 it may no longer be stored in this browser.";
+  });
+});
+$("sosFamilyBtn").addEventListener("click", function(){
+  const msg = $("sosMediaMsg");
+  if(voicePlayingId){ stopVoicePlay(); renderFamilyNotes(); return; }
+  if(!state.familyNotes.length){
+    msg.textContent = "No family notes yet \u2014 hand the phone to someone who loves you on a good day (Journey tab).";
+    return;
+  }
+  const n = state.familyNotes.length === 1 ? state.familyNotes[0] :
+    state.familyNotes[Math.floor(Math.random() * state.familyNotes.length)];
+  playVoiceNote(n).then(function(){
+    renderFamilyNotes();
+    msg.textContent = "Playing a message from " + (n.name || "family") + ". Tap the button again to stop it.";
+  }).catch(function(){
+    stopVoicePlay(); renderFamilyNotes();
     msg.textContent = "Couldn't play a note \u2014 it may no longer be stored in this browser.";
   });
 });
@@ -4994,6 +5249,53 @@ $("letterSave").addEventListener("click", function(){
   saveState(); renderLetters(); checkLetters();
 });
 
+/* ============ PASS IT ON ============
+   Notes for someone on day one, written from where you are now. A
+   collection, not a single letter — each note stands alone so one can be
+   handed to Ed or anyone else starting out. Copy reuses the existing
+   copyTextToClipboard helper. */
+function renderPassItOn(){
+  const el = $("pioList");
+  if(!el) return;
+  if(!state.passItOn.length){
+    el.innerHTML = '<p class="muted" style="margin:0;">No notes yet. Write the first one \u2014 what got you through week one is exactly what someone on day one needs to hear.</p>';
+    return;
+  }
+  el.innerHTML = "";
+  state.passItOn.slice().reverse().forEach(function(n){
+    const div = document.createElement("div");
+    div.className = "item";
+    div.innerHTML = '<div class="meta">Written ' + esc(fmtDate(n.date)) + '</div>' +
+      '<div style="white-space:pre-wrap;">' + esc(n.text) + '</div>';
+    const acts = document.createElement("div");
+    acts.className = "actions";
+    const copy = document.createElement("button");
+    copy.className = "small"; copy.textContent = "Copy";
+    copy.addEventListener("click", function(){
+      copyTextToClipboard(n.text, function(ok){
+        copy.textContent = ok ? "Copied" : "Copy failed";
+        setTimeout(function(){ copy.textContent = "Copy"; }, 2000);
+      });
+    });
+    const del = document.createElement("button");
+    del.className = "small ghost"; del.textContent = "Delete";
+    del.addEventListener("click", function(){
+      if(!confirm("Delete this note?")) return;
+      state.passItOn = state.passItOn.filter(function(q){ return q.id !== n.id; });
+      saveState(); renderPassItOn();
+    });
+    acts.appendChild(copy); acts.appendChild(del);
+    div.appendChild(acts); el.appendChild(div);
+  });
+}
+$("pioSave").addEventListener("click", function(){
+  const t = $("pioBody").value.trim();
+  if(!t){ alert("Write the note first."); return; }
+  state.passItOn.push({id:uid(), date:todayKey(), text:t.slice(0, 2000)});
+  $("pioBody").value = "";
+  saveState(); renderPassItOn();
+});
+
 /* ============ JOURNAL PROMPTS ============ */
 const PROMPTS = [
   "What's one thing today that felt easier because you were sober?",
@@ -6492,6 +6794,9 @@ function renderAll(){
   renderChips();
   renderStoryCard();
   renderVoiceNotes();
+  renderFamilyNotes();
+  renderPassItOn();
+  renderBadDayCard();
   renderBattlePlans();
   renderStole();
   renderRefusal();
@@ -6544,9 +6849,9 @@ setInterval(function(){
 setInterval(function(){ checkChips(); checkCombBadges(); checkLetters(); checkFitnessBadges(); checkSmokeBadges(); checkBodyMilestones(); }, 60000);
 </script>
 <script>
-// PWA (v1.14): offline service worker + install prompt + tap-to-apply updates.
+// PWA (v1.15): offline service worker + install prompt + tap-to-apply updates.
 // Added 2026-10-20. Self-contained: does not modify the main app script.
-const SF_APP_VERSION='1.14';
+const SF_APP_VERSION='1.15';
 try{var _sv=document.getElementById('sfVerSetup'); if(_sv)_sv.textContent=SF_APP_VERSION;}catch(e){}
 let sfReg=null, sfWaiting=null, sfReloading=false, sfPrompt=null;
 function sfShowBanner(){var b=document.getElementById('sfUpdateBanner'); if(b)b.style.display='block';}
