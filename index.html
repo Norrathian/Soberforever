@@ -17,17 +17,17 @@
 <style>
   :root, [data-theme="dark"]{
     --bg:#0f172a; --bg2:#16213a; --card:#1c2942; --text:#f1f5f9; --muted:#94a3b8;
-    --accent:#f59e0b; --accent2:#38bdf8; --good:#34d399; --warn:#fbbf24;
+    --accent:#f59e0b; --accent2:#38bdf8; --good:#34d399; --warn:#fbbf24; --waist:#f472b6;
     --line:#2b3a55; --input:#0f1a30; --shadow:0 8px 24px rgba(0,0,0,.35);
   }
   [data-theme="sunrise"]{
     --bg:#fff7ed; --bg2:#ffedd5; --card:#ffffff; --text:#431407; --muted:#b45309;
-    --accent:#ea580c; --accent2:#d97706; --good:#16a34a; --warn:#ca8a04;
+    --accent:#ea580c; --accent2:#d97706; --good:#16a34a; --warn:#ca8a04; --waist:#db2777;
     --line:#fed7aa; --input:#fff7ed; --shadow:0 8px 24px rgba(234,88,12,.12);
   }
   [data-theme="ocean"]{
     --bg:#ecfeff; --bg2:#cffafe; --card:#ffffff; --text:#083344; --muted:#0e7490;
-    --accent:#0891b2; --accent2:#0284c7; --good:#059669; --warn:#d97706;
+    --accent:#0891b2; --accent2:#0284c7; --good:#059669; --warn:#d97706; --waist:#db2777;
     --line:#a5f3fc; --input:#ecfeff; --shadow:0 8px 24px rgba(8,145,178,.12);
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
@@ -263,6 +263,9 @@
   .dpstrip > button .dplab{display:block; font-size:11px; color:var(--muted); line-height:1.4; padding:4px 2px;}
   .dpbig{width:100%; border-radius:12px; display:block; border:1px solid var(--line);}
   .rectime{font-variant-numeric:tabular-nums; font-weight:700; color:var(--warn);}
+  /* journey sections (audit cleanup, Part A) */
+  .jsec-h{font-size:.95rem; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); margin:22px 4px 2px;}
+  .jsec:first-child .jsec-h{margin-top:6px;}
   @media print{
     body{padding-bottom:0;}
     body > *:not(#reportOverlay){display:none !important;}
@@ -322,10 +325,6 @@
       <div><span class="streak" id="pledgeStreak">&#x1F525; 0-day pledge streak</span></div>
     </div>
 
-    <div class="card hidden" id="smokeTodayStripCard">
-      <p class="center" style="margin:0;" id="smokeTodayStripText"></p>
-    </div>
-
     <div class="card hidden" id="twoQuitsStripCard">
       <p class="center" style="margin:0;" id="twoQuitsStripText"></p>
     </div>
@@ -334,12 +333,6 @@
       <h2>&#x1F4C5; Next meeting</h2>
       <p class="muted center" id="meetNameLabel" style="margin:0 0 4px;"></p>
       <div class="countdown" id="meetCount">--:--:--</div>
-    </div>
-
-    <div class="card hidden" id="bpTodayCard">
-      <h2>&#x2694;&#xFE0F; Next battle plan</h2>
-      <p class="muted" style="margin:0;" id="bpTodayText"></p>
-      <button id="bpTodayOpen" class="small mt8">Open plan</button>
     </div>
 
     <div class="card hidden" id="focusCard">
@@ -364,10 +357,16 @@
       <div class="dots" id="moodRow"></div>
       <label class="lbl">Craving (1&ndash;5)</label>
       <div class="dots" id="cravingRow"></div>
+      <label class="lbl">Energy (1&ndash;5)</label>
+      <div class="dots" id="energyRow"></div>
       <label class="lbl">What sparked the craving? (optional)</label>
       <div class="chips" id="triggerTags"></div>
       <label class="lbl" for="ciNote">Note (optional)</label>
       <textarea id="ciNote" placeholder="Anything worth remembering about today..."></textarea>
+      <label class="row mt8" style="gap:10px; cursor:pointer;">
+        <input type="checkbox" id="ciProtein" style="width:auto; margin:0;">
+        <span>Ate protein-first today <span class="muted">(protein before the rest of the meal)</span></span>
+      </label>
       <button id="ciSave" class="mt12" style="width:100%;">Save check-in</button>
       <div id="recommitOffer" class="hidden mt12" style="background:var(--bg2); border:1px solid var(--line); border-radius:12px; padding:14px; text-align:center;">
         <p style="margin:0 0 10px;">That took honesty to log. If it helps, you can walk through it — no judgment, just a little reflection.</p>
@@ -400,10 +399,12 @@
 
   <!-- JOURNEY -->
   <section id="tab-journey" class="hidden">
+    <div class="jsec">
+      <h2 class="jsec-h">&#x1F389; Celebration</h2>
     <div class="card">
-      <h2>&#x1F3C6; Milestones</h2>
+      <h2>&#x1F3C6; Next chip</h2>
       <div class="ringwrap">
-        <svg width="150" height="150" viewBox="0 0 150 150" id="ringSvg" role="img" aria-label="Progress to next milestone">
+        <svg width="150" height="150" viewBox="0 0 150 150" id="ringSvg" role="img" aria-label="Progress to next chip">
           <circle cx="75" cy="75" r="64" fill="none" stroke="var(--line)" stroke-width="12"/>
           <circle id="ringFg" cx="75" cy="75" r="64" fill="none" stroke="var(--accent)" stroke-width="12"
                   stroke-linecap="round" stroke-dasharray="402.1" stroke-dashoffset="402.1"
@@ -415,7 +416,6 @@
           <p class="muted" id="ringCaption" style="margin:0;"></p>
         </div>
       </div>
-      <div id="milestoneList" class="mt12"></div>
     </div>
 
     <div class="card" id="twoQuitsCard">
@@ -453,6 +453,10 @@
       <button id="storyOpen" class="small mt8">Play my story</button>
     </div>
 
+    </div>
+
+    <div class="jsec">
+      <h2 class="jsec-h">&#x1F4F8; Proof</h2>
     <div class="card">
       <h2>&#x1F399;&#xFE0F; Messages from sober you</h2>
       <p class="muted" style="margin-top:0;">Record a note on a good day. Future you, mid-craving, needs to hear it.</p>
@@ -468,20 +472,40 @@
       <p class="muted mt8" style="margin-bottom:0;">Voice notes live in this browser only — they aren't part of the JSON backup in Settings, so they won't move to a new phone.</p>
     </div>
 
-    <div class="card">
-      <h2>&#x1F4F8; Proof it's working</h2>
-      <p class="muted" style="margin-top:0;">Photos that prove it's working — the scale, a clear-eyed morning, a good day with people you love. Open it when a craving says nothing's changed.</p>
-      <div id="evidenceGrid" class="evgrid"></div>
-      <label class="lbl" for="evidenceCaption">Caption for the next photo (optional)</label>
-      <input id="evidenceCaption" placeholder="e.g. Morning walk, feeling clear" maxlength="80">
+    <div class="card" id="dailyPhotoCard">
+      <h2>&#x1F4F8; See yourself come back</h2>
+      <p class="muted" style="margin-top:0;">One photo a day. Watch yourself come back, frame by frame.</p>
+      <div id="dailyPhotoStrip" class="dpstrip"></div>
+      <label class="lbl" for="dailyPhotoCaption">Caption for the next photo (optional)</label>
+      <input id="dailyPhotoCaption" placeholder="e.g. Morning walk, feeling clear" maxlength="80">
       <div class="row mt8">
-        <button id="evidenceAddBtn" class="small">Add a photo</button>
-        <input type="file" id="evidenceFile" accept="image/*" class="hidden">
+        <button id="dailyPhotoAddBtn" class="small">Add today's photo</button>
+        <button id="dailyCompareBtn" class="small ghost hidden">First &#x2194; Latest</button>
+        <input type="file" id="dailyPhotoFile" accept="image/*" class="hidden">
       </div>
-      <p class="muted mt8" id="evidenceMsg" style="margin-bottom:0;"></p>
+      <p class="muted mt8" id="dailyPhotoMsg" style="margin-bottom:0;"></p>
       <p class="muted mt8" style="margin-bottom:0;">Photos live in this browser only — they aren't part of the JSON backup in Settings, so they won't move to a new phone.</p>
     </div>
 
+    <div class="card" id="stoleCard">
+      <h2>Things drinking stole</h2>
+      <p class="muted" style="margin-top:0;">The life sobriety is buying back. Add the things, check them off as you live them.</p>
+      <div class="row">
+        <input id="stoleInput" placeholder="e.g. A sunrise hike, clear-headed" maxlength="120" style="flex:1; min-width:160px;">
+        <button id="stoleAdd" class="small">Add</button>
+      </div>
+      <div id="stoleStarters" class="hidden mt8">
+        <p class="muted" style="margin:0 0 8px;">Nothing here yet — tap one to add it:</p>
+        <div class="chips" id="stoleStarterChips"></div>
+      </div>
+      <p class="muted mt8" id="stoleMsg" style="margin-bottom:0;"></p>
+      <div id="stoleList" class="mt12"></div>
+    </div>
+
+    </div>
+
+    <div class="jsec">
+      <h2 class="jsec-h">&#x2694;&#xFE0F; Prepare</h2>
     <div class="card" id="battleCard">
       <h2>&#x2694;&#xFE0F; Battle plans</h2>
       <p class="muted" style="margin-top:0;">Plans are made on a clear-headed day, not during the event.</p>
@@ -517,21 +541,6 @@
       </div>
     </div>
 
-    <div class="card" id="stoleCard">
-      <h2>Things drinking stole</h2>
-      <p class="muted" style="margin-top:0;">The life sobriety is buying back. Add the things, check them off as you live them.</p>
-      <div class="row">
-        <input id="stoleInput" placeholder="e.g. A sunrise hike, clear-headed" maxlength="120" style="flex:1; min-width:160px;">
-        <button id="stoleAdd" class="small">Add</button>
-      </div>
-      <div id="stoleStarters" class="hidden mt8">
-        <p class="muted" style="margin:0 0 8px;">Nothing here yet — tap one to add it:</p>
-        <div class="chips" id="stoleStarterChips"></div>
-      </div>
-      <p class="muted mt8" id="stoleMsg" style="margin-bottom:0;"></p>
-      <div id="stoleList" class="mt12"></div>
-    </div>
-
     <div class="card" id="refusalCard">
       <h2>&#x1F5E3;&#xFE0F; Refusal reps</h2>
       <p class="muted" style="margin-top:0;">Rehearse the hard lines now, so they're easy later.</p>
@@ -545,6 +554,10 @@
       <div id="refusalBank" class="mt8"></div>
     </div>
 
+    </div>
+
+    <div class="jsec">
+      <h2 class="jsec-h">&#x1F4CB; Review</h2>
     <div class="card" id="sundayCard">
       <h2>&#x1FA9E; Sunday Review</h2>
       <p class="muted" style="margin-top:0;">Your week, honestly — one lesson, one small change.</p>
@@ -554,19 +567,6 @@
       <p class="muted mt8" id="sundayMsg" style="margin-bottom:0;"></p>
       <div id="sundayResult" class="mt12"></div>
       <div id="sundayHistory" class="mt12"></div>
-    </div>
-
-    <div class="card" id="dailyPhotoCard">
-      <h2>&#x1F4F8; See yourself come back</h2>
-      <p class="muted" style="margin-top:0;">One photo a day. Watch yourself come back, frame by frame.</p>
-      <div id="dailyPhotoStrip" class="dpstrip"></div>
-      <div class="row mt8">
-        <button id="dailyPhotoAddBtn" class="small">Add today's photo</button>
-        <button id="dailyCompareBtn" class="small ghost hidden">First &#x2194; Latest</button>
-        <input type="file" id="dailyPhotoFile" accept="image/*" class="hidden">
-      </div>
-      <p class="muted mt8" id="dailyPhotoMsg" style="margin-bottom:0;"></p>
-      <p class="muted mt8" style="margin-bottom:0;">Timeline photos live in this browser only — they aren't part of the JSON backup in Settings, so they won't move to a new phone.</p>
     </div>
 
     <div class="card">
@@ -583,30 +583,20 @@
     </div>
 
     <div class="card">
-      <h2>&#x2696;&#xFE0F; Weight</h2>
-      <div class="stat3">
-        <div class="s"><div class="v" id="wCurrent">&mdash;</div><div class="k">current</div></div>
-        <div class="s"><div class="v" id="wChange">&mdash;</div><div class="k">change</div></div>
-        <div class="s"><div class="v" id="wGoal">&mdash;</div><div class="k">goal</div></div>
+      <h2>&#x1F50D; Craving patterns</h2>
+      <div id="patternBars"></div>
+      <div style="border-top:1px solid var(--line); margin-top:12px; padding-top:10px;">
+        <label class="lbl">Craving spark right now? Tag what set it off</label>
+        <div class="chips" id="patternTags"></div>
+        <button id="patternLog" class="small mt8">Log craving spark</button>
+        <p class="muted mt8" id="patternMsg" style="margin-bottom:0;">Saved to today's check-in — this is what builds the patterns above.</p>
       </div>
-      <div class="chartbox"><div id="weightChart"></div>
-        <div class="legend">
-          <span><span class="sw" style="background:var(--accent);"></span>Weight</span>
-          <span><span class="sw" style="background:var(--warn);"></span>7-day avg</span>
-          <span><span class="sw" style="background:var(--good);"></span>Goal</span>
-          <span><span class="sw" style="background:var(--accent2);"></span>Sober days (scaled)</span>
-        </div>
-      </div>
-      <div class="row mt12">
-        <input type="date" id="wDate" style="flex:1; min-width:130px;">
-        <input type="number" id="wVal" min="0" step="0.1" inputmode="decimal" placeholder="Weight" style="flex:1; min-width:100px;">
-        <span class="muted" id="wUnitLabel">lbs</span>
-        <button id="wAdd" class="small">Log</button>
-      </div>
-      <p class="muted mt8" style="margin-bottom:0;">Set your unit and goal weight in Settings.</p>
-      <div id="weighInList" class="mt8"></div>
     </div>
 
+    </div>
+
+    <div class="jsec">
+      <h2 class="jsec-h">&#x1F4AA; Body &amp; money</h2>
     <div class="card">
       <h2>&#x1F634; Sleep</h2>
       <div class="chartbox"><div id="sleepChart"></div>
@@ -619,17 +609,6 @@
       <label class="lbl">Quality (1&ndash;5)</label>
       <div class="dots" id="sleepQRow"></div>
       <button id="sleepSave" class="small mt8">Log sleep</button>
-    </div>
-
-    <div class="card">
-      <h2>&#x1F50D; Craving patterns</h2>
-      <div id="patternBars"></div>
-      <div style="border-top:1px solid var(--line); margin-top:12px; padding-top:10px;">
-        <label class="lbl">Craving spark right now? Tag what set it off</label>
-        <div class="chips" id="patternTags"></div>
-        <button id="patternLog" class="small mt8">Log craving spark</button>
-        <p class="muted mt8" id="patternMsg" style="margin-bottom:0;">Saved to today's check-in — this is what builds the patterns above.</p>
-      </div>
     </div>
 
     <div class="card">
@@ -647,6 +626,10 @@
       <div class="tl" id="healthList"></div>
     </div>
 
+    </div>
+
+    <div class="jsec">
+      <h2 class="jsec-h">&#x270D;&#xFE0F; Write</h2>
     <div class="card">
       <h2>&#x2764;&#xFE0F; Reasons wall</h2>
       <div class="row">
@@ -708,10 +691,13 @@
       <p class="muted">A clean summary of your journey — print it or share it with a sponsor or counselor.</p>
       <button id="reportBtn" class="small">View progress report</button>
     </div>
+    </div>
   </section>
 
   <!-- FITNESS -->
   <section id="tab-fitness" class="hidden">
+    <div class="jsec">
+      <h2 class="jsec-h">&#x1F3C3; Move</h2>
     <div class="card center">
       <h2>&#x1F3C3; Move your body</h2>
       <p class="muted" style="margin:0 0 10px;">Every walk counts. Rest days count too &mdash; movement is a celebration, never a chore.</p>
@@ -730,6 +716,7 @@
         <option>Hike</option>
         <option>Bike</option>
         <option>Swim</option>
+        <option>Strength</option>
         <option>Other</option>
       </select>
       <div class="grid2">
@@ -815,6 +802,126 @@
       <h2>&#x1F4DD; Activity log</h2>
       <div id="actList"></div>
     </div>
+
+    </div>
+
+    <div class="jsec">
+      <h2 class="jsec-h">&#x1F4AA; Strength</h2>
+    <div class="card">
+      <h2>&#x1F4AA; Strength — bodyweight at home</h2>
+      <p class="muted" style="margin-top:0;">Beginner bodyweight, no gym, no gear except a chair and a backpack. Form cues on every move — go slow, own the rep. No fixed schedule: do one when it fits your day, not because a calendar says so.</p>
+      <div class="seg" style="margin-bottom:12px;">
+        <button id="strTabA" type="button">Workout A — Legs + Push</button>
+        <button id="strTabB" type="button">Workout B — Hinge + Pull + Core</button>
+      </div>
+      <div id="strList"></div>
+      <h3 style="margin:16px 0 8px;">Rest timer</h3>
+      <div class="row" style="align-items:center; gap:12px;">
+        <div style="font-size:1.8rem; font-weight:800;" id="strRestTime">1:00</div>
+        <button id="strRestStart" class="small">Start rest</button>
+        <button id="strRestReset" class="small ghost">Reset</button>
+      </div>
+      <p class="muted" style="margin:8px 0 0;">Rest about a minute between sets. The timer is here, not a drill sergeant.</p>
+      <div class="row mt12" style="align-items:center;">
+        <label class="lbl" for="strMins" style="margin:0 8px 0 0;">Minutes</label>
+        <input type="number" id="strMins" min="1" max="180" inputmode="numeric" value="20" style="width:80px;">
+        <button id="strLogBtn" style="flex:1;">&#x2705; I did this workout</button>
+      </div>
+      <p class="muted mt8" id="strMsg" style="margin-bottom:0;"></p>
+    </div>
+
+    </div>
+
+    <div class="jsec">
+      <h2 class="jsec-h">&#x2696;&#xFE0F; Body</h2>
+    <div class="card">
+      <h2>&#x2696;&#xFE0F; Body — weight &amp; waist</h2>
+      <div class="stat3">
+        <div class="s"><div class="v" id="wCurrent">&mdash;</div><div class="k">current</div></div>
+        <div class="s"><div class="v" id="wChange">&mdash;</div><div class="k">change</div></div>
+        <div class="s"><div class="v" id="wGoal">&mdash;</div><div class="k">goal</div></div>
+      </div>
+      <div class="stat3 mt8">
+        <div class="s"><div class="v" id="wWaistCurrent">&mdash;</div><div class="k">waist now</div></div>
+        <div class="s"><div class="v" id="wWaistChange">&mdash;</div><div class="k">waist change</div></div>
+        <div class="s"><div class="v" id="wWaistStart">&mdash;</div><div class="k">waist at start</div></div>
+      </div>
+      <div class="chartbox"><div id="weightChart"></div>
+        <div class="legend">
+          <span><span class="sw" style="background:var(--accent);"></span>Weight</span>
+          <span><span class="sw" style="background:var(--waist);"></span>Waist</span>
+          <span><span class="sw" style="background:var(--warn);"></span>7-day avg</span>
+          <span><span class="sw" style="background:var(--good);"></span>Goal</span>
+          <span><span class="sw" style="background:var(--accent2);"></span>Sober days (scaled)</span>
+        </div>
+      </div>
+      <div class="row mt12">
+        <input type="date" id="wDate" style="flex:1; min-width:130px;">
+        <input type="number" id="wVal" min="0" step="0.1" inputmode="decimal" placeholder="Weight" style="flex:1; min-width:90px;">
+        <input type="number" id="wWaist" min="0" step="0.1" inputmode="decimal" placeholder="Waist (in)" style="flex:1; min-width:90px;">
+        <span class="muted" id="wUnitLabel">lbs</span>
+        <button id="wAdd" class="small">Log</button>
+      </div>
+      <p class="muted mt8" style="margin-bottom:0;">One entry logs weight and waist together. Waist is optional — old weigh-ins without one just show &ldquo;&mdash;&rdquo;. Set your unit and goal weight in Settings.</p>
+      <div id="bodyMsList" class="mt12"></div>
+      <div id="weighInList" class="mt8"></div>
+      <div style="border-top:1px solid var(--line); margin-top:12px; padding-top:10px;">
+        <p class="muted" style="margin:0 0 8px;">Had measurements in ByeBelly? Import its backup once — it only adds dates you don't already have, and never overwrites anything here.</p>
+        <div class="row">
+          <button id="bbImportBtn" class="small ghost">Import ByeBelly backup</button>
+          <input type="file" id="bbImportFile" accept="application/json" class="hidden">
+        </div>
+        <p class="muted mt8" id="bbImportMsg" style="margin-bottom:0;"></p>
+      </div>
+    </div>
+
+    </div>
+
+    <div class="jsec">
+      <h2 class="jsec-h">&#x1F389; What sobriety gave back</h2>
+    <div class="card">
+      <h2>&#x1F389; What sobriety gave back</h2>
+      <p class="muted" style="margin-top:0;">Not willpower points — the actual beer you didn't drink, and the money you didn't spend on it.</p>
+      <div id="gaveBackPrompt" class="hidden">
+        <p style="margin:0;">Set your old beers per day in Settings to see what sobriety has given back.</p>
+      </div>
+      <div id="gaveBackFigs" class="hidden">
+        <div class="stat3">
+          <div class="s"><div class="v" id="gbCals">0</div><div class="k">calories not drunk</div></div>
+          <div class="s"><div class="v" id="gbMoney">$0</div><div class="k">money not spent</div></div>
+          <div class="s"><div class="v" id="gbDays">0</div><div class="k">sober days</div></div>
+        </div>
+        <p class="muted mt8" id="gbNote" style="margin-bottom:0;"></p>
+      </div>
+    </div>
+
+    </div>
+
+    <div class="jsec">
+      <h2 class="jsec-h">&#x1F37D;&#xFE0F; Fuel</h2>
+    <div class="card">
+      <h2>&#x1F37D;&#xFE0F; Portion guide — your hand is the measure</h2>
+      <p class="muted" style="margin-top:0;">No weighing, no app-within-an-app. Your hand scales with you.</p>
+      <div class="item"><div><b>Palm</b> — protein (chicken, eggs, Greek yogurt)</div></div>
+      <div class="item"><div><b>Fist</b> — vegetables and fruit</div></div>
+      <div class="item"><div><b>Cupped hand</b> — carbs (rice, potatoes, bread, oats)</div></div>
+      <div class="item"><div><b>Thumb</b> — fats (butter, oil, peanut butter, nuts)</div></div>
+      <p class="muted mt8" style="margin-bottom:0;">One simple rule carries the rest: protein first at every meal, then everything else. There's no food database and no meal log here on purpose — just the check on today's check-in.</p>
+      <p class="muted" id="proteinWeek" style="margin:8px 0 0;"></p>
+    </div>
+
+    </div>
+
+    <div class="jsec">
+      <h2 class="jsec-h">&#x1F4C8; Health together</h2>
+    <div class="card">
+      <h2>&#x1F4C8; Sleep, energy &amp; waist — with your sober days</h2>
+      <p class="muted" style="margin-top:0;">One week, side by side. Sleep, energy, movement and waist all move with the sober days — this is where that shows up.</p>
+      <div id="healthTogether"></div>
+      <p class="muted mt8" id="healthTogetherSummary" style="margin-bottom:0;"></p>
+    </div>
+
+    </div>
   </section>
 
   <!-- SMOKE-FREE -->
@@ -887,20 +994,13 @@
 
       <div class="card">
         <h2>&#x1F30A; Craving hitting?</h2>
-        <p class="muted">Most cravings peak and pass in a few minutes. Ride this one out.</p>
-        <div class="center">
-          <div id="smokeUrgeTime" style="font-size:2.4rem; font-weight:800;">5:00</div>
-          <p class="muted" id="smokeUrgeMsg" style="min-height:2.4em;"></p>
-          <div class="row" style="justify-content:center;">
-            <button id="smokeUrgeStart" class="small">Start 5-minute timer</button>
-            <button id="smokeUrgeCancel" class="small ghost">Cancel</button>
-          </div>
-        </div>
+        <p class="muted">Most cravings peak and pass in a few minutes. Ride this one out — the 10-minute urge timer lives on the SOS tab.</p>
         <div class="row mt12" style="justify-content:center;">
+          <button id="smokeUrgeGo" class="small">Open the 10-minute urge timer</button>
           <button id="smokeBreath" class="small ghost">Open breathing exercise</button>
         </div>
         <h3>Quick distractions</h3>
-        <p class="muted" style="margin:0;">Take a walk &bull; drink a big glass of water &bull; chew gum or a mint &bull; slow deep breaths &bull; text someone &bull; brush your teeth &bull; stretch for a minute</p>
+        <p class="muted" id="smokeCopingList" style="margin:0;"></p>
       </div>
 
       <div class="card hidden" id="smokeMsCard">
@@ -997,12 +1097,6 @@
       <p class="muted mt8" id="sosMediaMsg" style="margin-bottom:0;"></p>
     </div>
 
-    <div class="card center hidden" id="bpSosCard">
-      <h2>&#x2694;&#xFE0F; Today's battle plan</h2>
-      <p class="muted" style="margin-bottom:0;" id="bpSosText"></p>
-      <div class="row mt12" style="justify-content:center;" id="bpSosActions"></div>
-    </div>
-
     <div class="card">
       <h2>&#x1F4DE; My people</h2>
       <div id="sosContactsList"></div>
@@ -1035,18 +1129,7 @@
 
     <div class="card">
       <h2>&#x1F9F0; Coping ideas</h2>
-      <ul id="copingList" style="padding-left:20px; margin:0;">
-        <li>Step outside for 5 minutes of fresh air.</li>
-        <li>Drink a big glass of cold water.</li>
-        <li>Make a cup of tea or coffee, slowly.</li>
-        <li>Text or call someone you trust.</li>
-        <li>Take a shower — reset your body.</li>
-        <li>Write down exactly what you're feeling right now.</li>
-        <li>Go for a short walk around the block.</li>
-        <li>Head to a meeting — there's one every day at 5:30 PM.</li>
-      </ul>
-      <h3>&#x1F3AC; Play the tape forward</h3>
-      <p class="muted" style="margin-bottom:0;">Pause and picture it honestly: the first drink, then the next ones, then tomorrow morning — how you feel waking up, what it costs you, who it affects. Now picture the other version: you ride this out, and wake up tomorrow clear, with your streak intact. Which morning do you want?</p>
+      <ul id="copingList" style="padding-left:20px; margin:0;"></ul>
     </div>
   </section>
 
@@ -1170,6 +1253,9 @@
       <textarea id="setReason"></textarea>
       <label class="lbl" for="setSpend">Average daily spend on alcohol ($)</label>
       <input type="number" id="setSpend" min="0" step="0.5" inputmode="decimal">
+      <label class="lbl" for="setBeersPerDay">Beers per day, back when you were drinking (optional)</label>
+      <input type="number" id="setBeersPerDay" min="0" step="0.5" inputmode="decimal" placeholder="e.g. 6">
+      <p class="muted" style="margin:4px 0 0;">Used only for &ldquo;What sobriety gave back&rdquo; — calories not drunk. Leave it blank and that card stays off; nothing is ever guessed.</p>
       <div class="grid2">
         <div>
           <label class="lbl" for="setMtgName">Daily meeting name</label>
@@ -1243,17 +1329,6 @@
         <p class="muted" id="setSmokeLadderNote" style="margin:0 0 10px;"></p>
         <button id="setSmokeLadderToggle" class="small ghost">Pause ladder</button>
       </div>
-      <div id="setSmokeManualWrap">
-        <label class="lbl" for="setSmokeMode">My smoking plan</label>
-        <select id="setSmokeMode">
-          <option value="">Not set</option>
-          <option value="planning">Planning to quit</option>
-          <option value="quit">I've quit</option>
-          <option value="cutting">Cutting down</option>
-        </select>
-        <label class="lbl" for="setSmokeQuitDate">Quit date &amp; time</label>
-        <input type="datetime-local" id="setSmokeQuitDate">
-      </div>
       <div class="grid2">
         <div>
           <label class="lbl" for="setCigsPerDay">Cigarettes per day (avg)</label>
@@ -1264,10 +1339,7 @@
           <input type="number" id="setPackPrice" min="0" step="0.5" inputmode="decimal">
         </div>
       </div>
-      <div id="setSmokeLimitWrap">
-        <label class="lbl" for="setSmokeLimit">Daily limit (cutting down)</label>
-        <input type="number" id="setSmokeLimit" min="1" inputmode="numeric" placeholder="e.g. 10">
-      </div>
+      <p class="muted mt8" style="margin-bottom:0;">Change your smoking plan (mode, quit date, daily limit) on the Smoke-free tab.</p>
     </div>
 
     <div class="card">
@@ -1405,24 +1477,6 @@
   </div>
 </div>
 
-<!-- PROOF PHOTO OVERLAY -->
-<div id="photoOverlay" class="overlay hidden">
-  <div class="sheet" style="text-align:left;">
-    <div id="photoView"></div>
-    <div class="row mt12" style="justify-content:space-between;">
-      <button id="photoPrev" class="small ghost">Prev</button>
-      <button id="photoDelete" class="small danger">Delete photo</button>
-      <button id="photoNext" class="small ghost">Next</button>
-    </div>
-    <div class="row mt8" style="justify-content:center;">
-      <button id="photoPickBtn" class="small hidden">Use this photo</button>
-    </div>
-    <div class="row mt8" style="justify-content:center;">
-      <button id="photoClose" class="small ghost">Close</button>
-    </div>
-  </div>
-</div>
-
 <div id="dailyPhotoOverlay" class="overlay hidden">
   <div class="sheet" style="text-align:left;">
     <div id="dailyPhotoView"></div>
@@ -1430,6 +1484,10 @@
       <button id="dailyPhotoPrev" class="small ghost">Prev</button>
       <button id="dailyPhotoDelete" class="small danger">Delete photo</button>
       <button id="dailyPhotoNext" class="small ghost">Next</button>
+    </div>
+    <div class="row mt8" style="justify-content:center;">
+      <button id="dailyPhotoPickBtn" class="small hidden">Use this photo</button>
+      <button id="dailyPhotoBodyTag" class="small ghost">Tag as body check-in</button>
     </div>
     <div class="row mt8" style="justify-content:center;">
       <button id="dailyPhotoClose" class="small ghost">Close</button>
@@ -1462,7 +1520,7 @@ function defaultState(){
   return {
     v:1, onboarded:false,
     soberDate:null, reason:"",
-    dailySpend:0, theme:"dark",
+    dailySpend:0, beersPerDay:null, theme:"dark",
     meetingName:"Sundowners", meetingTime:"17:30",
     checkins:{}, pledges:[], wins:[], journal:[], reasons:[],
     meetings:[], celebrated:[],
@@ -1479,13 +1537,39 @@ function defaultState(){
     smoke:defaultSmoke()
   };
 }
+/* Audit cleanup (Part A, item 1): the old "Proof it's working" wall
+   (state.evidence[]) merged into the dated daily timeline (state.dailyPhotos[]).
+   Same IndexedDB "photos" store, same blob ids — only the metadata moves, so
+   no photo bytes are touched. Dated by the photo's stored timestamp; if none
+   is stored, by the import date. Never deletes a photo: a date already taken
+   in the timeline pushes the migrated photo to the next free date, and an id
+   already in the timeline is skipped, not duplicated. Runs on load and on
+   JSON import. After migration state.evidence stays as an empty legacy field. */
+function migrateEvidenceToTimeline(s){
+  if(!s || !Array.isArray(s.evidence) || !s.evidence.length) return;
+  if(!Array.isArray(s.dailyPhotos)) s.dailyPhotos = [];
+  const taken = {}, seen = {};
+  s.dailyPhotos.forEach(function(p){ if(p && p.date) taken[p.date] = true; if(p && p.id) seen[p.id] = true; });
+  s.evidence.forEach(function(p){
+    if(!p || !p.id || seen[p.id]) return;
+    seen[p.id] = true;
+    let key = p.ts ? localKey(new Date(p.ts)) : todayKey();
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(key)) key = todayKey();
+    while(taken[key]){ const d = keyToDate(key); d.setDate(d.getDate()+1); key = localKey(d); }
+    taken[key] = true;
+    s.dailyPhotos.push({id:p.id, date:key, caption:(p.caption || "").trim()});
+  });
+  s.evidence = [];
+}
 function loadState(){
   try{
     const raw = localStorage.getItem(LS_KEY);
     if(!raw) return defaultState();
     const s = JSON.parse(raw);
     if(!s || typeof s !== "object" || s.v !== 1) return defaultState();
-    return Object.assign(defaultState(), s);
+    const merged = Object.assign(defaultState(), s);
+    migrateEvidenceToTimeline(merged);
+    return merged;
   }catch(e){ return defaultState(); }
 }
 function saveState(){
@@ -1639,7 +1723,7 @@ function renderHero(){
   $("heroReason").textContent = state.reason ? "\u201C" + state.reason + "\u201D" : "";
 }
 
-/* ============ MILESTONES ============ */
+/* ============ MILESTONES (ladder data — the list UI is gone; see ladderRungs) ============ */
 const MILESTONES = [
   {d:1,label:"24 hours"},{d:3,label:"3 days"},{d:7,label:"1 week"},
   {d:14,label:"2 weeks"},{d:21,label:"3 weeks"},{d:30,label:"1 month"},
@@ -1648,57 +1732,61 @@ const MILESTONES = [
   {d:540,label:"18 months"},{d:730,label:"2 years"}
 ];
 const CIRC = 402.1;
-function nextMilestone(){
-  const d = daysElapsed();
-  for(const m of MILESTONES){ if(m.d > d) return m; }
+function nextChip(){
+  for(const c of CHIPS){ if(!chipEarned(c)) return c; }
   return null;
 }
 function renderMilestones(){
+  /* Ring only now — the separate milestone list is gone. Progress runs from
+     the last earned chip to the next chip (the single ladder). */
   const d = daysElapsed();
-  const next = nextMilestone();
-  const prev = (function(){
+  const next = nextChip();
+  const prevD = (function(){
     let p = 0;
-    for(const m of MILESTONES){ if(m.d <= d) p = m.d; }
+    for(const c of CHIPS){ if(chipEarned(c)) p = c.d; }
     return p;
   })();
-  const pct = next ? Math.min(100, Math.round(((d - prev)/(next.d - prev))*100)) : 100;
+  const pct = next ? Math.min(100, Math.round(((d - prevD)/(next.d - prevD))*100)) : 100;
   $("ringFg").style.strokeDashoffset = (CIRC * (1 - pct/100)).toFixed(1);
   $("ringFg").style.transition = "stroke-dashoffset .8s ease";
   $("ringPct").textContent = pct + "%";
-  $("ringNext").textContent = next ? next.label : "all done!";
+  $("ringNext").textContent = next ? next.name + " \u2022 " + next.label : "all done!";
   $("ringCaption").textContent = next
-    ? d.toLocaleString() + " days down — " + (next.d - d) + " to go until " + next.label + "."
-    : "Every milestone reached. Incredible.";
-  let html = "";
-  let nextFlag = true;
-  for(const m of MILESTONES){
-    const done = d >= m.d;
-    const isNext = !done && nextFlag;
-    if(isNext) nextFlag = false;
-    html += '<div class="msrow' + (done?" done":"") + (isNext?" next":"") + '">' +
-      '<div class="msdot">' + (done ? "&#x2713;" : (isNext ? "&#x25B8;" : m.d)) + "</div>" +
-      '<div class="mslabel">' + esc(m.label) + (done ? ' <span class="muted">— reached</span>' : "") + "</div></div>";
-  }
-  $("milestoneList").innerHTML = html;
+    ? d.toLocaleString() + " days down \u2014 " + (next.d - d) + " to go until your " + next.name.toLowerCase() + " (" + next.label.toLowerCase() + ")."
+    : "Every chip earned. Incredible.";
 }
-function checkMilestones(){
-  const d = daysElapsed();
-  for(const m of MILESTONES){
-    const id = "m" + m.d;
-    if(d >= m.d && state.celebrated.indexOf(id) === -1){
-      state.celebrated.push(id);
-      saveState();
-      showCelebration(
-        m.label + " sober!",
-        "Look how far you've come. Keep going — you're doing this.",
-        m.label.toUpperCase() + " SOBER",
-        "Soberforever \u2022 one day at a time"
-      );
-      break;
+/* ============ SINGLE LADDER (chips + milestones, one celebration) ============
+   The old checkMilestones() + checkChips() both fired from the same 60-second
+   interval and each called showCelebration(), which overwrote the single
+   overlay — on a shared day (e.g. day 30) the chip celebration silently
+   replaced the milestone one, while the milestone was already recorded in
+   state.celebrated[] and never shown again. Now there is one ladder:
+   ladderRungs() merges the milestone days and the chip days by day, so a
+   shared day is ONE rung that records BOTH ids ("m30" and "chip-red30") and
+   queues ONE celebration. Milestone-only days (3, 7, 14, 21, 540) stay rungs
+   of this ladder, so nothing earned before is lost. One rung per pass; the
+   queue delivers the rest on later passes instead of overwriting. */
+function ladderRungs(){
+  const byDay = {};
+  MILESTONES.forEach(function(m){
+    byDay[m.d] = {d:m.d, ids:["m"+m.d], title:m.label+" sober!",
+      sub:"Look how far you've come. Keep going \u2014 you're doing this.",
+      cardBig:m.label.toUpperCase()+" SOBER", cardSub:"Soberforever \u2022 one day at a time"};
+  });
+  CHIPS.forEach(function(c){
+    const cid = "chip-"+c.id;
+    if(byDay[c.d]){
+      byDay[c.d].ids.push(cid);
+      byDay[c.d].title = c.name+" earned!";
+      byDay[c.d].sub = c.line;
+      byDay[c.d].cardBig = c.label+" SOBER";
+    } else {
+      byDay[c.d] = {d:c.d, ids:[cid], title:c.name+" earned!", sub:c.line,
+        cardBig:c.label+" SOBER", cardSub:"Soberforever \u2022 one day at a time"};
     }
-  }
+  });
+  return Object.keys(byDay).map(function(k){ return byDay[k]; }).sort(function(a,b){ return a.d-b.d; });
 }
-
 /* ============ CHIPS ============ */
 /* Digital AA-style chip collection. Colors vary by real-world group — this follows
    the most common progression; the milestone matters more than the exact color. */
@@ -1812,19 +1900,16 @@ function showChipDetail(id){
 }
 function checkChips(){
   if(!state.soberDate) return;
-  for(const c of CHIPS){
-    const cid = "chip-" + c.id;
-    if(chipEarned(c) && state.celebrated.indexOf(cid) === -1){
-      state.celebrated.push(cid);
-      saveState();
-      showCelebration(
-        c.name + " earned!",
-        c.line,
-        c.label + " SOBER",
-        "Soberforever \u2022 one day at a time"
-      );
-      break;
-    }
+  const d = daysElapsed();
+  const rungs = ladderRungs();
+  for(const r of rungs){
+    if(d < r.d) break;
+    const missing = r.ids.filter(function(id){ return state.celebrated.indexOf(id) === -1; });
+    if(!missing.length) continue;
+    missing.forEach(function(id){ state.celebrated.push(id); });
+    saveState();
+    queueCelebration(r.title, r.sub, r.cardBig, r.cardSub);
+    break;
   }
 }
 $("chipOpen").addEventListener("click", openChips);
@@ -2186,7 +2271,6 @@ document.addEventListener("keydown", function(e){
   if(e.key !== "Escape") return;
   if(!$("storyOverlay").classList.contains("hidden")) closeStory();
   else if(!$("tapeOverlay").classList.contains("hidden")) closeTape();
-  else if(!$("photoOverlay").classList.contains("hidden")) closePhoto();
   else if(!$("dailyPhotoOverlay").classList.contains("hidden")) closeDailyPhoto();
   else if(!$("pocketOverlay").classList.contains("hidden")) closePocket();
 });
@@ -2199,14 +2283,14 @@ function renderSosMedia(){
     msg.textContent = "Playing a message from sober you\u2026 tap \u201CHear from sober you\u201D again to stop it.";
     return;
   }
-  const vn = state.voiceNotes.length, ev = state.evidence.length;
+  const vn = state.voiceNotes.length, ev = (state.dailyPhotos || []).length;
   if(!vn && !ev){
     msg.textContent = "Nothing here yet \u2014 on a good day, record a voice note or add a proof photo on the Journey tab. Future you will be glad you did.";
     return;
   }
   const parts = [];
   if(vn) parts.push(vn + (vn === 1 ? " voice note" : " voice notes") + " from sober you");
-  if(ev) parts.push(ev + (ev === 1 ? " proof photo" : " proof photos"));
+  if(ev) parts.push(ev + (ev === 1 ? " timeline photo" : " timeline photos"));
   msg.textContent = "Waiting for you: " + parts.join(" and ") + ".";
 }
 
@@ -2381,48 +2465,6 @@ $("sosVoiceBtn").addEventListener("click", function(){
   });
 });
 
-/* ============ PROOF PHOTOS ============ */
-let photoIdx = 0;
-const evUrls = {};
-function renderEvidence(){
-  const grid = $("evidenceGrid");
-  if(!grid) return;
-  Object.keys(evUrls).forEach(function(id){
-    if(!state.evidence.some(function(p){ return p.id === id; })){
-      try{ URL.revokeObjectURL(evUrls[id]); }catch(e){}
-      delete evUrls[id];
-    }
-  });
-  if(!mediaSupported()){
-    grid.innerHTML = '<p class="muted" style="margin:0;">Photo storage isn\'t supported in this browser, so photos can\'t be kept here.</p>';
-    $("evidenceAddBtn").disabled = true;
-  } else if(!state.evidence.length){
-    grid.innerHTML = '<p class="muted" style="margin:0;">No photos yet. Add the first piece of proof below \u2014 future you is counting on it.</p>';
-  } else {
-    grid.innerHTML = "";
-    state.evidence.slice().reverse().forEach(function(p, ri){
-      const idx = state.evidence.length - 1 - ri;
-      const btn = document.createElement("button");
-      btn.setAttribute("aria-label", p.caption ? "Proof photo: " + p.caption : "Proof photo");
-      const img = document.createElement("img");
-      img.alt = p.caption || "";
-      btn.appendChild(img);
-      btn.addEventListener("click", function(){ openPhoto(idx); });
-      grid.appendChild(btn);
-      loadEvThumb(p, img, btn);
-    });
-  }
-  renderSosMedia();
-}
-function loadEvThumb(p, img, btn){
-  if(evUrls[p.id]){ img.src = evUrls[p.id]; return; }
-  mediaGet("photos", p.id).then(function(blob){
-    if(!blob){ btn.style.display = "none"; return; }
-    if(!state.evidence.some(function(q){ return q.id === p.id; })) return;
-    evUrls[p.id] = URL.createObjectURL(blob);
-    img.src = evUrls[p.id];
-  }).catch(function(){ btn.style.display = "none"; });
-}
 function downscaleImage(file){
   return new Promise(function(resolve, reject){
     const url = URL.createObjectURL(file);
@@ -2451,88 +2493,6 @@ function downscaleImage(file){
     img.src = url;
   });
 }
-$("evidenceAddBtn").addEventListener("click", function(){
-  if(!mediaSupported()){ $("evidenceMsg").textContent = "Photo storage isn't supported in this browser."; return; }
-  $("evidenceFile").click();
-});
-$("evidenceFile").addEventListener("change", function(){
-  const input = $("evidenceFile");
-  const file = input.files && input.files[0];
-  input.value = "";
-  if(!file) return;
-  const msg = $("evidenceMsg");
-  msg.textContent = "Saving your photo\u2026";
-  downscaleImage(file).then(function(blob){
-    const id = uid();
-    return mediaPut("photos", id, blob).then(function(){
-      state.evidence.push({id:id, ts:Date.now(), caption:$("evidenceCaption").value.trim()});
-      $("evidenceCaption").value = "";
-      saveState(); renderEvidence();
-      msg.textContent = "Added. That's proof.";
-    });
-  }).catch(function(){
-    msg.textContent = "Couldn't save that photo \u2014 try a different one.";
-  });
-});
-function openPhoto(idx){
-  if(idx < 0 || idx >= state.evidence.length) return;
-  photoIdx = idx;
-  renderPhotoView();
-  $("photoOverlay").classList.remove("hidden");
-}
-function closePhoto(){
-  photoPickFor = null;
-  $("photoOverlay").classList.add("hidden");
-}
-function renderPhotoView(){
-  const p = state.evidence[photoIdx];
-  const view = $("photoView");
-  if(!p){ closePhoto(); return; }
-  view.innerHTML = "";
-  const img = document.createElement("img");
-  img.className = "evbig";
-  img.alt = p.caption || "";
-  view.appendChild(img);
-  const cap = document.createElement("div");
-  cap.className = "mt8";
-  cap.innerHTML = (p.caption ? '<div style="font-weight:700;">' + esc(p.caption) + "</div>" : "") +
-    '<div class="muted">' + esc(fmtDateTime(new Date(p.ts).toISOString())) + " &middot; photo " + (photoIdx + 1) + " of " + state.evidence.length + "</div>";
-  view.appendChild(cap);
-  $("photoPrev").disabled = photoIdx === 0;
-  $("photoNext").disabled = photoIdx === state.evidence.length - 1;
-  $("photoPickBtn").classList.toggle("hidden", !photoPickFor);
-  $("photoDelete").classList.toggle("hidden", !!photoPickFor);
-  if(evUrls[p.id]){ img.src = evUrls[p.id]; return; }
-  mediaGet("photos", p.id).then(function(blob){
-    if(!blob) return;
-    if(!state.evidence.some(function(q){ return q.id === p.id; })) return;
-    evUrls[p.id] = URL.createObjectURL(blob);
-    if(state.evidence[photoIdx] && state.evidence[photoIdx].id === p.id) img.src = evUrls[p.id];
-  }).catch(function(){});
-}
-$("photoClose").addEventListener("click", closePhoto);
-$("photoPrev").addEventListener("click", function(){ if(photoIdx > 0){ photoIdx--; renderPhotoView(); } });
-$("photoNext").addEventListener("click", function(){ if(photoIdx < state.evidence.length - 1){ photoIdx++; renderPhotoView(); } });
-$("photoDelete").addEventListener("click", function(){
-  const p = state.evidence[photoIdx];
-  if(!p) return;
-  if(!confirm("Delete this photo?")) return;
-  state.evidence = state.evidence.filter(function(q){ return q.id !== p.id; });
-  state.stoleList.forEach(function(it){ if(it.photoId === p.id) it.photoId = null; });
-  if(evUrls[p.id]){ try{ URL.revokeObjectURL(evUrls[p.id]); }catch(e){} delete evUrls[p.id]; }
-  mediaDelete("photos", p.id).catch(function(){});
-  saveState(); renderEvidence(); renderStole();
-  if(!state.evidence.length) closePhoto();
-  else { if(photoIdx >= state.evidence.length) photoIdx = state.evidence.length - 1; renderPhotoView(); }
-});
-$("sosProofBtn").addEventListener("click", function(){
-  if(!state.evidence.length){
-    $("sosMediaMsg").textContent = "No proof photos yet \u2014 add the first one on the Journey tab.";
-    return;
-  }
-  openPhoto(state.evidence.length - 1);
-});
-
 /* ============ SUNDAY REVIEW ============ */
 function sundayWeekKeys(){
   const arr = [];
@@ -2553,6 +2513,12 @@ const SUNDAY_TRIGGER_CHANGE = {
   "Emotion": "Write one line in the journal when the feeling hits, before deciding anything.",
   "Other": "Name the moment out loud in your check-in note next time it comes up."
 };
+function weekWeightChange(keys){
+  const items = state.weighIns.filter(function(p){ return keys.indexOf(p.date) !== -1; })
+    .sort(function(a,b){ return a.ts - b.ts; });
+  if(items.length < 2) return null;
+  return items[items.length-1].w - items[0].w;
+}
 function computeSundayReview(){
   const keys = sundayWeekKeys();
   const logged = keys.map(function(k){ return state.checkins[k]; }).filter(Boolean);
@@ -2561,6 +2527,10 @@ function computeSundayReview(){
     sober: logged.filter(function(c){ return c.status === "sober"; }).length,
     mood: avgNums(logged.map(function(c){ return c.mood; }).filter(function(v){ return v != null; })),
     craving: avgNums(logged.map(function(c){ return c.craving; }).filter(function(v){ return v != null; })),
+    energy: avgNums(logged.map(function(c){ return c.energy; }).filter(function(v){ return v != null; })),
+    sleepAvg: avgNums(keys.map(function(k){ return state.sleepLog[k] && state.sleepLog[k].hours; }).filter(function(v){ return v != null; })),
+    weightChange: weekWeightChange(keys),
+    moveStreak: activeStreak(),
     meetings: state.meetings.filter(function(m){ return keys.indexOf(m.date) !== -1; }).length,
     wins: state.wins.filter(function(w){ return keys.indexOf(w.date) !== -1; }).length
   };
@@ -2594,6 +2564,18 @@ function computeSundayReview(){
     lesson = "Your mood averaged " + fmtAvg(stats.mood) + " this week — a heavy one. The fact that you kept logging through it matters.";
     lessonKind = "mood";
     change = "One kind thing for yourself each evening this week — a walk, a call, an early night.";
+  } else if(stats.energy != null && stats.energy <= 2.5){
+    lesson = "Your energy averaged " + fmtAvg(stats.energy) + " / 5 this week — a flat one. Low energy and cravings often travel together.";
+    lessonKind = "energy";
+    change = "One early night and one morning walk before noon, 3 days this week.";
+  } else if(stats.weightChange != null && stats.weightChange <= -1){
+    lesson = "Down " + fmtWn(Math.abs(stats.weightChange)) + " " + weightUnit() + " this week — the sober mornings and the walks are showing up on the scale.";
+    lessonKind = "health";
+    change = "Keep the same walk and one strength workout this week — no new rules.";
+  } else if(stats.moveStreak >= 5){
+    lesson = "A " + stats.moveStreak + "-day movement streak is running — your body is getting the same daily vote your sobriety is.";
+    lessonKind = "health";
+    change = "Keep the streak alive with a walk, even a short one, on the hardest day.";
   } else {
     lesson = "No single pattern stood out this week — and that's an honest result too.";
     lessonKind = "none";
@@ -2604,7 +2586,9 @@ function computeSundayReview(){
 function sundayReviewHTML(r){
   const s = r.stats;
   return '<div class="item"><div class="meta">Week of ' + esc(fmtDate(r.weekStart)) + ' – ' + esc(fmtDate(r.weekEnd)) + '</div>' +
-    '<div class="muted">Sober ' + s.sober + '/' + s.days + ' logged days &middot; Mood ' + fmtAvg(s.mood) + ' &middot; Craving ' + fmtAvg(s.craving) + ' &middot; Meetings ' + s.meetings + ' &middot; Wins ' + s.wins + '</div>' +
+    '<div class="muted">Sober ' + s.sober + '/' + s.days + ' logged days &middot; Mood ' + fmtAvg(s.mood) + ' &middot; Craving ' + fmtAvg(s.craving) + ' &middot; Energy ' + fmtAvg(s.energy) + ' &middot; Sleep ' + fmtAvg(s.sleepAvg) + 'h' +
+    (s.weightChange != null ? ' &middot; Weight ' + (s.weightChange > 0 ? "+" : "") + fmtWn(s.weightChange) + ' ' + weightUnit() : '') +
+    ' &middot; Move streak ' + (s.moveStreak != null ? s.moveStreak : "\u2014") + 'd &middot; Meetings ' + s.meetings + ' &middot; Wins ' + s.wins + '</div>' +
     '<div style="margin-top:8px;"><b>One honest lesson:</b> ' + esc(r.lesson) + '</div>' +
     '<div style="margin-top:4px;"><b>One small change:</b> ' + esc(r.change) + '</div></div>';
 }
@@ -2664,7 +2648,7 @@ function dpSorted(){
 function dailyPhotoFor(date){
   return (state.dailyPhotos || []).find(function(p){ return p.date === date; }) || null;
 }
-function dpUpsertToday(id){
+function dpUpsertToday(id, caption){
   const today = todayKey();
   const old = dailyPhotoFor(today);
   if(old){
@@ -2672,14 +2656,15 @@ function dpUpsertToday(id){
     mediaDelete("photos", old.id).catch(function(){});
     state.dailyPhotos = state.dailyPhotos.filter(function(q){ return q.id !== old.id; });
   }
-  state.dailyPhotos.push({id: id, date: today});
+  state.dailyPhotos.push({id: id, date: today, caption: (caption || "").trim()});
   return !!old;
 }
 function dpDeletePhoto(id){
   state.dailyPhotos = (state.dailyPhotos || []).filter(function(q){ return q.id !== id; });
+  state.stoleList.forEach(function(it){ if(it.photoId === id) it.photoId = null; });
   if(dpUrls[id]){ try{ URL.revokeObjectURL(dpUrls[id]); }catch(e){} delete dpUrls[id]; }
   mediaDelete("photos", id).catch(function(){});
-  saveState(); renderDailyPhotos();
+  saveState(); renderDailyPhotos(); renderStole();
 }
 function dpComparePair(){
   const list = dpSorted();
@@ -2717,9 +2702,9 @@ function renderDailyPhotos(){
     strip.innerHTML = "";
     list.forEach(function(p, idx){
       const btn = document.createElement("button");
-      btn.setAttribute("aria-label", "Timeline photo " + p.date);
+      btn.setAttribute("aria-label", (p.caption ? "Photo: " + p.caption + " \u2014 " : "Timeline photo ") + p.date);
       const img = document.createElement("img");
-      img.alt = "";
+      img.alt = p.caption || "";
       btn.appendChild(img);
       const lab = document.createElement("span");
       lab.className = "dplab";
@@ -2749,7 +2734,9 @@ $("dailyPhotoFile").addEventListener("change", function(){
   downscaleImage(file).then(function(blob){
     const id = uid();
     return mediaPut("photos", id, blob).then(function(){
-      const replaced = dpUpsertToday(id);
+      const caption = $("dailyPhotoCaption").value.trim();
+      $("dailyPhotoCaption").value = "";
+      const replaced = dpUpsertToday(id, caption);
       saveState(); renderDailyPhotos();
       msg.textContent = replaced ? "Today's photo replaced." : "Added. Day one, on the record.";
     });
@@ -2757,7 +2744,7 @@ $("dailyPhotoFile").addEventListener("change", function(){
     msg.textContent = "Couldn't save that photo — try a different one.";
   });
 });
-let dpIdx = 0, dpCompare = false;
+let dpIdx = 0, dpCompare = false, dpPickFor = null; /* dpPickFor: stole item id when picking a photo to link */
 function openDailyPhoto(idx){
   const list = dpSorted();
   if(idx < 0 || idx >= list.length) return;
@@ -2792,7 +2779,11 @@ function renderDailyPhotoView(){
       wrap.appendChild(img);
       const cap = document.createElement("div");
       cap.className = "muted mt8";
-      cap.textContent = (i === 0 ? "First — " : "Latest — ") + fmtDate(p.date);
+      cap.textContent = (i === 0 ? "First \u2014 " : "Latest \u2014 ") + fmtDate(p.date) + (p.caption ? " \u2014 " + p.caption : "");
+      if(p.bodyCheck){
+        const w = waistForDate(p.date);
+        cap.textContent += w != null ? " \u00b7 Waist " + fmtWaist(w) : " \u00b7 Waist \u2014 (no weigh-in)";
+      }
       wrap.appendChild(cap);
       view.appendChild(wrap);
       dpLoadBig(p, img);
@@ -2800,6 +2791,8 @@ function renderDailyPhotoView(){
     $("dailyPhotoPrev").disabled = true;
     $("dailyPhotoNext").disabled = true;
     $("dailyPhotoDelete").classList.add("hidden");
+    $("dailyPhotoPickBtn").classList.add("hidden");
+    $("dailyPhotoBodyTag").classList.add("hidden");
     return;
   }
   const p = list[dpIdx];
@@ -2810,8 +2803,20 @@ function renderDailyPhotoView(){
   view.appendChild(img);
   const cap = document.createElement("div");
   cap.className = "muted mt8";
-  cap.textContent = fmtDate(p.date) + " · photo " + (dpIdx + 1) + " of " + list.length;
+  cap.innerHTML = (p.caption ? '<div style="font-weight:700;color:var(--text);">' + esc(p.caption) + "</div>" : "") +
+    esc(fmtDate(p.date) + " \u00b7 photo " + (dpIdx + 1) + " of " + list.length);
   view.appendChild(cap);
+  const w = waistForDate(p.date);
+  if(w != null){
+    const wd = document.createElement("div");
+    wd.className = "muted mt8";
+    wd.textContent = "Waist on this day: " + fmtWaist(w) + (p.bodyCheck ? " \u2014 body check-in" : "");
+    view.appendChild(wd);
+  }
+  $("dailyPhotoPickBtn").classList.toggle("hidden", !dpPickFor);
+  const tagBtn = $("dailyPhotoBodyTag");
+  tagBtn.classList.remove("hidden");
+  tagBtn.textContent = p.bodyCheck ? "Body check-in \u2713 \u2014 untag" : "Tag as body check-in";
   $("dailyPhotoPrev").disabled = dpIdx === 0;
   $("dailyPhotoNext").disabled = dpIdx === list.length - 1;
   $("dailyPhotoDelete").classList.remove("hidden");
@@ -2836,6 +2841,46 @@ $("dailyCompareBtn").addEventListener("click", function(){
   renderDailyPhotoView();
   $("dailyPhotoOverlay").classList.remove("hidden");
 });
+/* One photo system (audit cleanup, Part A item 1): the old evidence viewer is
+   gone — the daily timeline viewer is the only viewer. SOS "See your proof"
+   opens the latest timeline photo; "Things drinking stole" links photos from
+   the same timeline via pick mode (dpPickFor). */
+function openDailyPhotoById(id){
+  const list = dpSorted();
+  for(let i = 0; i < list.length; i++){ if(list[i].id === id){ openDailyPhoto(i); return; } }
+}
+$("sosProofBtn").addEventListener("click", function(){
+  const list = dpSorted();
+  if(!list.length){
+    $("sosMediaMsg").textContent = "No photos yet \u2014 add the first one on the Journey tab.";
+    return;
+  }
+  openDailyPhoto(list.length - 1);
+});
+function openDailyPhotoPick(itemId){
+  dpPickFor = itemId;
+  const list = dpSorted();
+  openDailyPhoto(list.length - 1);
+}
+$("dailyPhotoPickBtn").addEventListener("click", function(){
+  const list = dpSorted();
+  const item = state.stoleList.find(function(q){ return q.id === dpPickFor; });
+  const p = list[dpIdx];
+  if(item && p) item.photoId = p.id;
+  dpPickFor = null;
+  saveState(); renderStole(); closeDailyPhoto();
+});
+/* Health integration (v1.14): optionally tag a daily photo as a body
+   check-in. Tagged photos show that day's waist alongside them in the
+   First ↔ Latest compare view — same timeline, same IndexedDB store,
+   zero new stores. */
+$("dailyPhotoBodyTag").addEventListener("click", function(){
+  const list = dpSorted();
+  const p = list[dpIdx];
+  if(!p || dpCompare) return;
+  p.bodyCheck = !p.bodyCheck;
+  saveState(); renderDailyPhotoView();
+});
 
 /* ============ BATTLE PLANS ============ */
 const BP_EXAMPLES = ["Halloween party", "Thanksgiving dinner", "Christmas gathering", "Family barbecue"];
@@ -2855,11 +2900,6 @@ function bpPlanDate(p){ return p.date || ""; }
 function bpIsPast(p){
   const d = bpPlanDate(p);
   return d !== "" && d < todayKey();
-}
-function bpDaysAway(p){
-  const d = bpPlanDate(p);
-  if(!d) return null;
-  return Math.round((keyToDate(d).getTime() - keyToDate(todayKey()).getTime()) / 86400000);
 }
 function bpSupportTextFor(p){
   return (p.supportText || "").replace(/\[event\]/g, p.name || "this event");
@@ -3027,33 +3067,6 @@ function renderBattlePlans(){
     pastWrap.classList.add("hidden");
     pastWrap.innerHTML = "";
   }
-  const today = state.battlePlans.find(function(p){ return p.date === todayKey(); });
-  const sosCard = $("bpSosCard");
-  if(today){
-    sosCard.classList.remove("hidden");
-    const txt = $("bpSosText");
-    txt.innerHTML = "<b>" + esc(today.name) + "</b> is today." +
-      (today.escapePlan ? " Way out, if you need it: " + esc(today.escapePlan) : "");
-    const acts = $("bpSosActions");
-    acts.innerHTML = "";
-    appendSendAction(acts, today, null);
-  } else sosCard.classList.add("hidden");
-  const strip = $("bpTodayCard");
-  let nearest = null, nearestDays = 999;
-  state.battlePlans.forEach(function(p){
-    const d = bpDaysAway(p);
-    if(d !== null && d >= 0 && d <= 14 && d < nearestDays){ nearest = p; nearestDays = d; }
-  });
-  if(nearest){
-    strip.classList.remove("hidden");
-    $("bpTodayText").innerHTML = "<b>" + esc(nearest.name) + "</b> — " + fmtDate(nearest.date) +
-      (nearestDays === 0 ? " (today)" : nearestDays === 1 ? " (tomorrow)" : " (in " + nearestDays + " days)");
-    $("bpTodayOpen").onclick = function(){
-      switchTab("journey");
-      const card = $("battleCard");
-      if(card && card.scrollIntoView) card.scrollIntoView({behavior: state.reduceMotion ? "auto" : "smooth", block:"start"});
-    };
-  } else strip.classList.add("hidden");
 }
 $("bpSave").addEventListener("click", function(){
   const name = $("bpName").value.trim();
@@ -3135,8 +3148,7 @@ function renderStole(){
       img.alt = "";
       img.style.cssText = "width:48px;height:48px;object-fit:cover;border-radius:8px;";
       img.addEventListener("click", function(){
-        const idx = state.evidence.findIndex(function(p){ return p.id === it.photoId; });
-        if(idx !== -1) openPhoto(idx);
+        openDailyPhotoById(it.photoId);
       });
       top.appendChild(img);
       loadStoleThumb(it, img);
@@ -3160,11 +3172,11 @@ function renderStole(){
         const lk = document.createElement("button");
         lk.className = "small"; lk.textContent = "\uD83D\uDCF8 Link photo";
         lk.addEventListener("click", function(){
-          if(!state.evidence.length){
-            $("stoleMsg").textContent = "No photos yet — add one to the wall first.";
+          if(!(state.dailyPhotos || []).length){
+            $("stoleMsg").textContent = "No photos yet \u2014 add one to the timeline first.";
             return;
           }
-          openPhotoPick(it.id);
+          openDailyPhotoPick(it.id);
         });
         acts.appendChild(lk);
       }
@@ -3182,12 +3194,12 @@ function renderStole(){
   });
 }
 function loadStoleThumb(it, img){
-  if(evUrls[it.photoId]){ img.src = evUrls[it.photoId]; return; }
+  if(dpUrls[it.photoId]){ img.src = dpUrls[it.photoId]; return; }
   mediaGet("photos", it.photoId).then(function(blob){
     if(!blob){ img.style.display = "none"; return; }
     if(!state.stoleList.some(function(q){ return q.id === it.id && q.photoId === it.photoId; })) return;
-    evUrls[it.photoId] = URL.createObjectURL(blob);
-    img.src = evUrls[it.photoId];
+    dpUrls[it.photoId] = URL.createObjectURL(blob);
+    img.src = dpUrls[it.photoId];
   }).catch(function(){ img.style.display = "none"; });
 }
 $("stoleAdd").addEventListener("click", function(){
@@ -3199,20 +3211,6 @@ $("stoleAdd").addEventListener("click", function(){
 });
 $("stoleInput").addEventListener("keydown", function(e){
   if(e.key === "Enter") $("stoleAdd").click();
-});
-
-/* ============ PHOTO PICK MODE (link a wall photo to a stole item) ============ */
-let photoPickFor = null;
-function openPhotoPick(itemId){
-  photoPickFor = itemId;
-  openPhoto(state.evidence.length - 1);
-}
-$("photoPickBtn").addEventListener("click", function(){
-  const item = state.stoleList.find(function(q){ return q.id === photoPickFor; });
-  const p = state.evidence[photoIdx];
-  if(item && p) item.photoId = p.id;
-  photoPickFor = null;
-  saveState(); renderStole(); closePhoto();
 });
 
 /* ============ REFUSAL REPS ============
@@ -3382,17 +3380,40 @@ function launchConfetti(ms){
   }
   requestAnimationFrame(frame);
 }
-function showCelebration(title, sub, cardBig, cardSub){
-  lastCeleb = {title:title, sub:sub, cardBig:cardBig, cardSub:cardSub, days:daysElapsed(), date:new Date()};
-  $("celebTitle").textContent = title;
-  $("celebSub").textContent = sub;
-  $("celebCardBig").textContent = cardBig;
-  $("celebCardSub").textContent = cardSub;
+/* Celebration queue (audit fix, Part A item 2): the old showCelebration()
+   overwrote the single overlay, so when the 60-second interval fired two
+   celebrations at once (milestone + chip, or chip + combined + butt), only
+   the last was ever seen. Now every celebration is queued: the first shows
+   immediately, the rest wait their turn, and closing one drains the next.
+   Duplicate titles already showing or queued are skipped. */
+let celebQueue = [];
+function queueCelebration(title, sub, cardBig, cardSub){
+  const item = {title:title, sub:sub, cardBig:cardBig, cardSub:cardSub};
+  const showingSame = !$("celebOverlay").classList.contains("hidden") &&
+    $("celebTitle").textContent === title && $("celebCardBig").textContent === cardBig;
+  const queuedSame = celebQueue.some(function(q){ return q.title === title && q.cardBig === cardBig; });
+  if(showingSame || queuedSame) return;
+  celebQueue.push(item);
+  drainCelebrations();
+}
+function drainCelebrations(){
+  if(!$("celebOverlay").classList.contains("hidden")) return;
+  const next = celebQueue.shift();
+  if(!next) return;
+  lastCeleb = {title:next.title, sub:next.sub, cardBig:next.cardBig, cardSub:next.cardSub, days:daysElapsed(), date:new Date()};
+  $("celebTitle").textContent = next.title;
+  $("celebSub").textContent = next.sub;
+  $("celebCardBig").textContent = next.cardBig;
+  $("celebCardSub").textContent = next.cardSub;
   $("celebOverlay").classList.remove("hidden");
   launchConfetti(3800);
 }
+function showCelebration(title, sub, cardBig, cardSub){
+  queueCelebration(title, sub, cardBig, cardSub);
+}
 $("celebClose").addEventListener("click", function(){
   $("celebOverlay").classList.add("hidden");
+  drainCelebrations();
 });
 $("celebCopy").addEventListener("click", function(){
   const text = $("celebCardBig").textContent + " — " + $("celebCardSub").textContent;
@@ -3450,7 +3471,7 @@ function renderCountdown(){
 }
 
 /* ============ CHECK-IN ============ */
-let ciStatus = "sober", ciMood = 3, ciCraving = 1;
+let ciStatus = "sober", ciMood = 3, ciCraving = 1, ciEnergy = 3;
 function buildDots(rowId, val, setter){
   const row = $(rowId);
   row.innerHTML = "";
@@ -3478,12 +3499,15 @@ function renderCheckin(){
   $("checkinDate").value = k;
   if(c){
     setCiStatus(c.status); ciMood = c.mood||3; ciCraving = c.craving==null?1:c.craving;
+    ciEnergy = c.energy==null?3:c.energy;
+    $("ciProtein").checked = !!c.proteinFirst;
     $("ciNote").value = "";
     $("ciTodayStatus").textContent = c.status === "sober"
       ? "Today is logged as sober. Nice."
       : "Today is logged. No judgment here — tomorrow is a fresh day.";
   } else {
-    setCiStatus("sober"); ciMood = 3; ciCraving = 1;
+    setCiStatus("sober"); ciMood = 3; ciCraving = 1; ciEnergy = 3;
+    $("ciProtein").checked = false;
     $("ciNote").value = "";
     $("ciTodayStatus").textContent = "Not logged yet today — no pressure either way.";
   }
@@ -3491,11 +3515,13 @@ function renderCheckin(){
   renderTriggerTags();
   buildDots("moodRow", ciMood, function(v){ ciMood = v; });
   buildDots("cravingRow", ciCraving, function(v){ ciCraving = v; });
+  buildDots("energyRow", ciEnergy, function(v){ ciEnergy = v; });
 }
 $("ciSave").addEventListener("click", function(){
   const k = $("checkinDate").value || todayKey();
   state.checkins[k] = {
-    status: ciStatus, mood: ciMood, craving: ciCraving,
+    status: ciStatus, mood: ciMood, craving: ciCraving, energy: ciEnergy,
+    proteinFirst: $("ciProtein").checked,
     note: $("ciNote").value.trim(), triggers: ciTriggers.slice()
   };
   saveState();
@@ -3519,7 +3545,7 @@ function renderRhythm(){
     const cls = c ? (c.status === "sober" ? "sober" : "drank") : "";
     html += '<div class="rday ' + cls + '"><div class="d">' + days[d.getDay()] + '</div>' +
       '<div class="s"></div><div>' + d.getDate() + '</div>' +
-      '<div class="m">' + (c ? ("M"+c.mood+" C"+c.craving) : "&nbsp;") + "</div></div>";
+      '<div class="m">' + (c ? ("M"+c.mood+" C"+c.craving+(c.energy!=null?" E"+c.energy:"")) : "&nbsp;") + "</div></div>";
   }
   $("rhythmStrip").innerHTML = html;
 }
@@ -3531,6 +3557,32 @@ function renderMoney(){
   $("moneyTotal").textContent = money(d * spend);
   $("money30").textContent = money(30 * spend);
   $("moneyYr").textContent = money(365 * spend);
+}
+
+/* ============ WHAT SOBRIETY GAVE BACK ============
+   Calories not drunk: sober days × old beers/day × 150 cal (a regular
+   12 oz beer — the same figure ByeBelly used). Money not spent: sober
+   days × average daily spend — the existing money-saved logic, reused
+   exactly. With no beers/day set there is no figure at all: the prompt
+   shows instead, and nothing is ever derived from a guessed default. */
+const BEER_CALORIES = 150;
+function renderGaveBack(){
+  const bpd = state.beersPerDay;
+  const prompt = $("gaveBackPrompt"), figs = $("gaveBackFigs");
+  if(!(bpd > 0)){
+    prompt.classList.remove("hidden");
+    figs.classList.add("hidden");
+    return;
+  }
+  prompt.classList.add("hidden");
+  figs.classList.remove("hidden");
+  const days = daysElapsed();
+  const spend = +state.dailySpend || 0;
+  $("gbCals").textContent = Math.round(days * bpd * BEER_CALORIES).toLocaleString();
+  $("gbMoney").textContent = money(days * spend);
+  $("gbDays").textContent = days;
+  $("gbNote").textContent = days + " sober days × " + bpd + " beers a day × 150 calories a beer" +
+    (spend > 0 ? " · money from your average daily spend, same as the Money saved card." : " · set your average daily spend in Settings to see the money side too.");
 }
 
 /* ============ HEALTH TIMELINE ============ */
@@ -3746,6 +3798,30 @@ $("urgeCancel").addEventListener("click", function(){
   urgeReset();
   $("urgeMsg").textContent = "Timer cancelled. You're still here, and that counts.";
 });
+
+/* One shared coping/distraction list (audit cleanup, Part A item 5): the SOS
+   "Coping ideas" list and the Smoke tab "Quick distractions" list are now
+   rendered from this single array, in both places. */
+const COPING_IDEAS = [
+  "Step outside for 5 minutes of fresh air.",
+  "Drink a big glass of cold water.",
+  "Make a cup of tea or coffee, slowly.",
+  "Text or call someone you trust.",
+  "Take a shower \u2014 reset your body.",
+  "Write down exactly what you're feeling right now.",
+  "Go for a short walk around the block.",
+  "Head to a meeting \u2014 there's one every day at 5:30 PM.",
+  "Chew gum or a mint.",
+  "Slow, deep breaths.",
+  "Brush your teeth.",
+  "Stretch for a minute."
+];
+function renderCopingList(){
+  const sos = $("copingList");
+  if(sos) sos.innerHTML = COPING_IDEAS.map(function(t){ return "<li>" + esc(t) + "</li>"; }).join("");
+  const smkEl = $("smokeCopingList");
+  if(smkEl) smkEl.textContent = COPING_IDEAS.join(" \u2022 ");
+}
 
 /* ============ MEETINGS ============ */
 const BADGES = [
@@ -4010,32 +4086,31 @@ $("pocketBody").addEventListener("click", function(e){
 
 /* ============ SETTINGS ============ */
 function renderSettings(){
+  /* Settings version display (audit fix, Part A item 10): the static "1.0" in
+     the HTML is a placeholder — show the real build version. SF_APP_VERSION
+     lives in the PWA script, which runs after this script's first renderAll(),
+     so the first call is guarded; the PWA script sets it again on load. */
+  try{ const sv = $("sfVerSetup"); if(sv) sv.textContent = SF_APP_VERSION; }catch(e){}
   if(state.soberDate){
     const d = new Date(state.soberDate);
     $("setDate").value = d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate())+"T"+pad(d.getHours())+":"+pad(d.getMinutes());
   }
   $("setReason").value = state.reason || "";
   $("setSpend").value = state.dailySpend || 0;
+  $("setBeersPerDay").value = state.beersPerDay != null ? state.beersPerDay : "";
   $("setMtgName").value = state.meetingName || "";
   $("setMtgTime").value = state.meetingTime || "17:30";
   $("setTheme").value = state.theme || "dark";
   $("setWeightUnit").value = weightUnit();
   $("setDistUnit").value = distUnit();
   const ssm0 = smk();
-  $("setSmokeMode").value = ssm0.mode || "";
-  if(ssm0.quitDate){
-    const sqd = new Date(ssm0.quitDate);
-    $("setSmokeQuitDate").value = sqd.getFullYear()+"-"+pad(sqd.getMonth()+1)+"-"+pad(sqd.getDate())+"T"+pad(sqd.getHours())+":"+pad(sqd.getMinutes());
-  } else { $("setSmokeQuitDate").value = ""; }
   $("setCigsPerDay").value = ssm0.cigsPerDay || 0;
   $("setPackPrice").value = ssm0.packPrice || 0;
-  $("setSmokeLimit").value = ssm0.dailyLimit || "";
-  /* One source of truth: while the ladder is active it drives the plan, so
-     Settings shows the ladder instead of the manual plan controls. The stats
-     inputs above (cigs/day, pack price) stay editable in both states. */
+  /* Audit cleanup (Part A item 8): Settings no longer carries a second copy
+     of the smoke plan controls — mode, quit date, and daily limit live only
+     on the Smoke-free tab. Settings keeps the stats (cigs/day, pack price)
+     plus the ladder summary/toggle below. */
   const ladderOn = taperActive();
-  $("setSmokeManualWrap").classList.toggle("hidden", ladderOn);
-  $("setSmokeLimitWrap").classList.toggle("hidden", ladderOn);
   if(ladderOn){
     const cur = taperTodayStep(), qd = taperQuitDateKey();
     let summary = "Taper ladder: active \u2014 Tapering, cutting down on the ladder. ";
@@ -4049,11 +4124,11 @@ function renderSettings(){
     }
     if(qd) summary += " Quit day: " + fmtDate(qd) + ".";
     $("setSmokeLadderText").textContent = summary;
-    $("setSmokeLadderNote").textContent = "The ladder is driving your plan \u2014 pause it to set these by hand.";
+    $("setSmokeLadderNote").textContent = "The ladder is driving your plan. Change it on the Smoke-free tab.";
     $("setSmokeLadderToggle").textContent = "Pause ladder";
   } else {
     $("setSmokeLadderText").textContent = "Taper ladder paused \u2014 your schedule is saved, including any holds.";
-    $("setSmokeLadderNote").textContent = "The manual controls below are driving for now.";
+    $("setSmokeLadderNote").textContent = "Change your plan on the Smoke-free tab \u2014 the ladder stays saved, including any holds.";
     $("setSmokeLadderToggle").textContent = "Turn ladder back on";
   }
   $("setGoalWeight").value = state.goalWeight != null ? fmtWn(state.goalWeight) : "";
@@ -4065,6 +4140,10 @@ $("setSave").addEventListener("click", function(){
   if(dv) state.soberDate = new Date(dv).toISOString();
   state.reason = $("setReason").value.trim();
   state.dailySpend = Math.max(0, parseFloat($("setSpend").value) || 0);
+  /* Health integration (v1.14): old beers/day feeds "What sobriety gave
+     back" only. Blank means unset — never a guessed default. */
+  const bpd = parseFloat($("setBeersPerDay").value);
+  state.beersPerDay = (bpd > 0) ? bpd : null;
   state.meetingName = $("setMtgName").value.trim() || "Sundowners";
   state.meetingTime = $("setMtgTime").value || "17:30";
   state.theme = $("setTheme").value;
@@ -4072,20 +4151,18 @@ $("setSave").addEventListener("click", function(){
   state.textSize = $("setTextSize").value === "large" ? "large" : "normal";
   state.weightUnit = $("setWeightUnit").value === "kg" ? "kg" : "lbs";
   state.distUnit = $("setDistUnit").value === "km" ? "km" : "mi";
-  /* While the ladder drives the plan, a settings save must never overwrite
-     it: mode, quit date, and daily limit stay exactly as the ladder has them.
-     Cigs/day and pack price are statistics, not the plan, so they always save.
-     NOTE: check the ladder BEFORE taking the smk() reference — smk() rebuilds
-     state.smoke on every call, and taperActive() calls smk() internally, so a
-     reference taken first would go stale and its writes would be lost. */
+  /* Audit cleanup (Part A item 8): Settings no longer edits the smoke plan
+     at all — mode, quit date, and daily limit live only on the Smoke-free
+     tab — so a settings save can never overwrite the ladder. Cigs/day and
+     pack price are statistics, not the plan, so they always save.
+     SAVE GUARD (unchanged): check the ladder BEFORE taking the smk()
+     reference — smk() rebuilds state.smoke on every call, and taperActive()
+     calls smk() internally, so a reference taken first would go stale and
+     its writes would be lost. */
   const ladderOn = taperActive();
   const ssm = smk();
-  if(!ladderOn){
-    ssm.mode = $("setSmokeMode").value || null;
-    const sqdv = $("setSmokeQuitDate").value;
-    ssm.quitDate = sqdv ? new Date(sqdv).toISOString() : null;
-    const slim = parseInt($("setSmokeLimit").value, 10);
-    ssm.dailyLimit = slim > 0 ? slim : 0;
+  if(ladderOn){
+    /* Ladder active: Settings touches nothing about the plan. Stats below. */
   }
   ssm.cigsPerDay = Math.max(0, parseInt($("setCigsPerDay").value, 10) || 0);
   ssm.packPrice = Math.max(0, parseFloat($("setPackPrice").value) || 0);
@@ -4121,6 +4198,7 @@ $("importFile").addEventListener("change", function(e){
       const s = JSON.parse(r.result);
       if(!s || typeof s !== "object" || s.v !== 1) throw new Error("bad file");
       state = Object.assign(defaultState(), s);
+      migrateEvidenceToTimeline(state);
       applyTheme(); saveState(); renderAll();
       alert("Data imported.");
     }catch(err){ alert("That file doesn't look like a Soberforever backup."); }
@@ -4235,6 +4313,22 @@ function rollingAvg(items, i){
   }
   return n ? sum/n : items[i].w;
 }
+/* ============ WEIGHT + WAIST TRACKER (Body card) ============
+   One entry logs weight and waist together. Waist is optional and stored
+   in inches; old weigh-ins without a waist just show "—" (tolerant reads,
+   no migration needed). Waist draws on the same chart as weight, on its
+   own scale, with the sober-days overlay shared by both. */
+function fmtWaist(inches){ return (Math.round(inches*10)/10) + "\u2033"; }
+function waistForDate(date){
+  /* Waist on a date: exact match, else the nearest earlier weigh-in that
+     has one. Used by the photo body-tag view. */
+  const items = state.weighIns.filter(function(p){ return p.waist != null; })
+    .sort(function(a,b){ return a.ts - b.ts; });
+  if(!items.length) return null;
+  let best = null;
+  items.forEach(function(p){ if(p.date <= date) best = p; });
+  return best ? best.waist : null;
+}
 function renderWeight(){
   const unit = weightUnit();
   $("wUnitLabel").textContent = unit;
@@ -4242,6 +4336,7 @@ function renderWeight(){
   const items = state.weighIns.slice().sort(function(a,b){ return a.ts - b.ts; });
   if(!items.length){
     $("wCurrent").textContent = "\u2014"; $("wChange").textContent = "\u2014"; $("wGoal").textContent = "\u2014";
+    $("wWaistCurrent").textContent = "\u2014"; $("wWaistChange").textContent = "\u2014"; $("wWaistStart").textContent = "\u2014";
     $("weightChart").innerHTML = '<p class="muted" style="margin:0;">Log your first weigh-in below to start your trend.</p>';
   } else {
     const cur = items[items.length-1].w;
@@ -4251,15 +4346,28 @@ function renderWeight(){
     chEl.textContent = (diff > 0 ? "+" : "") + fmtWn(diff) + " " + unit;
     chEl.style.color = diff < 0 ? "var(--good)" : "var(--text)";
     $("wGoal").textContent = state.goalWeight ? fmtWn(state.goalWeight) + " " + unit : "\u2014";
+    const wItems = items.filter(function(p){ return p.waist != null; });
+    if(wItems.length){
+      const wCur = wItems[wItems.length-1].waist;
+      const wDiff = wCur - wItems[0].waist;
+      $("wWaistCurrent").textContent = fmtWaist(wCur);
+      const wcEl = $("wWaistChange");
+      wcEl.textContent = (wDiff > 0 ? "+" : "") + fmtWaist(wDiff);
+      wcEl.style.color = wDiff < 0 ? "var(--good)" : "var(--text)";
+      $("wWaistStart").textContent = fmtWaist(wItems[0].waist);
+    } else {
+      $("wWaistCurrent").textContent = "\u2014"; $("wWaistChange").textContent = "\u2014"; $("wWaistStart").textContent = "\u2014";
+    }
     renderWeightChart(items);
   }
   const el = $("weighInList");
-  if(!items.length){ el.innerHTML = ""; return; }
+  if(!items.length){ el.innerHTML = ""; renderBodyMilestones(); return; }
   el.innerHTML = "";
   items.slice().reverse().slice(0,8).forEach(function(p){
     const div = document.createElement("div");
     div.className = "item";
-    div.innerHTML = '<div class="meta">' + esc(fmtDate(p.date)) + '</div><div style="font-weight:700;">' + fmtWn(p.w) + " " + esc(unit) + "</div>";
+    div.innerHTML = '<div class="meta">' + esc(fmtDate(p.date)) + '</div><div style="font-weight:700;">' + fmtWn(p.w) + " " + esc(unit) +
+      ' &middot; waist ' + (p.waist != null ? esc(fmtWaist(p.waist)) : "\u2014") + "</div>";
     const acts = document.createElement("div");
     acts.className = "actions";
     const del = document.createElement("button");
@@ -4271,6 +4379,7 @@ function renderWeight(){
     });
     acts.appendChild(del); div.appendChild(acts); el.appendChild(div);
   });
+  renderBodyMilestones();
 }
 function renderWeightChart(items){
   const box = $("weightChart");
@@ -4286,7 +4395,7 @@ function renderWeightChart(items){
   const t0 = items[0].ts, t1 = items[items.length-1].ts, span = (t1 - t0) || 1;
   function X(ts){ return pl + (ts - t0)/span*(W - pl - pr); }
   function Y(w){ return pt + (1 - (w - mn)/(mx - mn))*(H - pt - pb); }
-  let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block;" role="img" aria-label="Weight trend chart">';
+  let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;display:block;" role="img" aria-label="Weight and waist trend chart">';
   if(state.soberDate){
     const sd0 = new Date(state.soberDate).getTime();
     const pts = items.map(function(p){
@@ -4306,6 +4415,19 @@ function renderWeightChart(items){
   items.forEach(function(p){
     s += '<circle cx="' + X(p.ts).toFixed(1) + '" cy="' + Y(p.w).toFixed(1) + '" r="4.5" fill="var(--accent)"/>';
   });
+  /* Waist on its own scale (inches vs pounds), dotted, same sober overlay. */
+  const wItems = items.filter(function(p){ return p.waist != null; });
+  if(wItems.length >= 2){
+    const wv = wItems.map(function(p){ return p.waist; });
+    let wmn = Math.min.apply(null, wv), wmx = Math.max.apply(null, wv);
+    const wpad = (wmx - wmn) || 1; wmn -= wpad*0.25; wmx += wpad*0.25;
+    function Yw(v){ return pt + (1 - (v - wmn)/(wmx - wmn))*(H - pt - pb); }
+    const wPts = wItems.map(function(p){ return X(p.ts).toFixed(1) + "," + Yw(p.waist).toFixed(1); }).join(" ");
+    s += '<polyline points="' + wPts + '" fill="none" stroke="var(--waist)" stroke-width="2.5" stroke-dasharray="2 4" stroke-linecap="round"/>';
+    wItems.forEach(function(p){
+      s += '<circle cx="' + X(p.ts).toFixed(1) + '" cy="' + Yw(p.waist).toFixed(1) + '" r="3.5" fill="var(--waist)"/>';
+    });
+  }
   s += '<text x="' + pl + '" y="' + (H-8) + '" fill="var(--muted)" font-size="12">' + esc(fmtDate(items[0].date)) + '</text>';
   s += '<text x="' + (W-pr) + '" y="' + (H-8) + '" fill="var(--muted)" font-size="12" text-anchor="end">' + esc(fmtDate(items[items.length-1].date)) + '</text>';
   s += '</svg>';
@@ -4316,9 +4438,104 @@ $("wAdd").addEventListener("click", function(){
   if(!(v > 0)){ alert("Enter a weight first."); return; }
   const k = $("wDate").value || todayKey();
   const d = keyToDate(k);
-  state.weighIns.push({id:uid(), date:k, ts:d.getTime(), w:toLbs(v)});
-  $("wVal").value = "";
-  saveState(); renderWeight();
+  const waist = parseFloat($("wWaist").value);
+  state.weighIns.push({id:uid(), date:k, ts:d.getTime(), w:toLbs(v), waist:(waist > 0 ? Math.round(waist*10)/10 : null)});
+  $("wVal").value = ""; $("wWaist").value = "";
+  saveState(); renderWeight(); checkBodyMilestones();
+});
+
+/* ============ BODY MILESTONES ============
+   Same pattern as the fitness badges: threshold, once, queued celebration.
+   Thresholds match ByeBelly's — first weigh-in vs latest, 5 lb and 1 inch. */
+function bodyMilestoneState(){
+  const items = state.weighIns.slice().sort(function(a,b){ return a.ts - b.ts; });
+  const wItems = items.filter(function(p){ return p.waist != null; });
+  return {
+    lbDown: items.length >= 2 ? items[0].w - items[items.length-1].w : 0,
+    inDown: wItems.length >= 2 ? wItems[0].waist - wItems[wItems.length-1].waist : 0
+  };
+}
+function renderBodyMilestones(){
+  const el = $("bodyMsList");
+  if(!el) return;
+  const s = bodyMilestoneState();
+  const rows = [
+    {id:"body5lb", done: s.lbDown >= 5, label:"5 lb down",
+     sub: s.lbDown > 0 ? fmtWn(s.lbDown) + " " + weightUnit() + " down so far" : "Log weigh-ins to track this"},
+    {id:"bodyWaist1in", done: s.inDown >= 1, label:"First inch off the waist",
+     sub: s.inDown > 0 ? fmtWaist(s.inDown) + " off so far" : "Log waist measurements to track this"}
+  ];
+  el.innerHTML = "";
+  rows.forEach(function(r){
+    const div = document.createElement("div");
+    div.className = "msrow" + (r.done ? " done" : "");
+    div.innerHTML = '<div class="msdot">' + (r.done ? "\u2713" : "\u2022") + '</div><div style="flex:1;"><div style="font-weight:700;">' +
+      esc(r.label) + '</div><div class="muted">' + esc(r.sub) + "</div></div>";
+    el.appendChild(div);
+  });
+}
+function checkBodyMilestones(){
+  const s = bodyMilestoneState();
+  if(s.lbDown >= 5 && state.celebrated.indexOf("body5lb") === -1){
+    state.celebrated.push("body5lb"); saveState();
+    showCelebration("5 lb down!",
+      "Five pounds lighter than where you started — the walks and the sober mornings are doing their work.",
+      "\u2696\uFE0F 5 LB DOWN", "Soberforever \u2022 one day at a time");
+  }
+  if(s.inDown >= 1 && state.celebrated.indexOf("bodyWaist1in") === -1){
+    state.celebrated.push("bodyWaist1in"); saveState();
+    showCelebration("First inch off the waist!",
+      "An inch off the tape — the number the scale can't fake.",
+      "\uD83D\uDCCF FIRST INCH", "Soberforever \u2022 one day at a time");
+  }
+  renderBodyMilestones();
+}
+
+/* ============ BYEBELLY IMPORT (one-time) ============
+   ByeBelly backup JSON is its whole state object; the measurements live in
+   measures[] as {date, weight, waist} (pounds, inches). Merge only: a date
+   already in Soberforever is never overwritten — a missing waist on that
+   date is filled in, nothing else changes. Waist-only measures with no
+   matching Soberforever date are skipped (nothing to attach them to). */
+$("bbImportBtn").addEventListener("click", function(){ $("bbImportFile").click(); });
+$("bbImportFile").addEventListener("change", function(e){
+  const f = e.target.files && e.target.files[0];
+  e.target.value = "";
+  if(!f) return;
+  const msg = $("bbImportMsg");
+  const r = new FileReader();
+  r.onload = function(){
+    try{
+      const data = JSON.parse(r.result);
+      const measures = Array.isArray(data) ? data : (data && Array.isArray(data.measures) ? data.measures : null);
+      if(!measures) throw new Error("no measures");
+      let added = 0, waistFilled = 0, skipped = 0;
+      measures.forEach(function(m){
+        if(!m || !m.date || !/^\d{4}-\d{2}-\d{2}$/.test(m.date)){ skipped++; return; }
+        const w = (m.weight != null && +m.weight > 0) ? +m.weight : null;
+        const waist = (m.waist != null && +m.waist > 0) ? Math.round(+m.waist*10)/10 : null;
+        if(w == null && waist == null){ skipped++; return; }
+        const ex = state.weighIns.find(function(q){ return q.date === m.date; });
+        if(ex){
+          if(waist != null && ex.waist == null){ ex.waist = waist; waistFilled++; }
+          else skipped++;
+        } else if(w != null){
+          state.weighIns.push({id:uid(), date:m.date, ts:keyToDate(m.date).getTime(), w:w, waist:waist});
+          added++;
+        } else {
+          skipped++;
+        }
+      });
+      saveState(); renderWeight(); checkBodyMilestones();
+      msg.textContent = "Imported " + added + " measurement" + (added === 1 ? "" : "s") +
+        (waistFilled ? ", filled in waist on " + waistFilled + " existing date" + (waistFilled === 1 ? "" : "s") : "") +
+        (skipped ? " — " + skipped + " skipped (already here, or waist-only with no matching date)" : "") +
+        ". Nothing already in Soberforever was changed.";
+    }catch(err){
+      msg.textContent = "That file doesn't look like a ByeBelly backup (it should have a measures list).";
+    }
+  };
+  r.readAsText(f);
 });
 
 /* ============ SLEEP LOG ============ */
@@ -5101,7 +5318,6 @@ function renderSmoke(){
   $("smokeMain").classList.toggle("hidden", !hasMode);
   if(!hasMode){
     $("smokeTaperCard").classList.add("hidden");
-    $("smokeTodayStripCard").classList.add("hidden");
     return;
   }
   const mode = s.mode;
@@ -5192,7 +5408,6 @@ function renderSmoke(){
   renderSmokeReasons();
   renderSmokeSlips();
   renderSmokeTaper();
-  renderSmokeTodayStrip();
 }
 
 /* Taper ladder card + Today-tab strip. Every date and limit below is read
@@ -5247,27 +5462,6 @@ function renderSmokeTaper(){
   $("smokeTaperToggle").textContent = on ? "Pause ladder" : "Turn ladder back on";
 }
 
-function renderSmokeTodayStrip(){
-  const card = $("smokeTodayStripCard"), txt = $("smokeTodayStripText");
-  const s = smk();
-  if(s.mode !== "cutting"){ card.classList.add("hidden"); return; }
-  const tc = smokeTodayCount(), lim = smokeEffLimit(), cur = taperTodayStep();
-  let msg;
-  if(taperActive() && cur && cur.limit === 0){
-    msg = "\uD83D\uDEAC Today's the day \u2014 0 cigarettes. You've got this.";
-  } else if(taperPreStart()){
-    const first = taperSteps().length ? taperSteps()[0].limit : null;
-    msg = "\uD83D\uDEAC Smoke ladder starts " + fmtDate(s.taper.startDate) + " at 6am" +
-      (first !== null ? " \u2014 first step " + first + " a day." : ".") +
-      " Today's limit: " + (lim || "\u2013") + " \u2014 " + tc + " logged.";
-  } else if(taperActive() && cur){
-    msg = "\uD83D\uDEAC Today's smoke limit: " + lim + " \u2014 " + tc + " logged (taper step " + (taperStepIndex(cur)+1) + " of " + taperSteps().length + ").";
-  } else {
-    msg = "\uD83D\uDEAC Today's smoke limit: " + (lim || "\u2013") + " \u2014 " + tc + " logged.";
-  }
-  txt.textContent = msg;
-  card.classList.remove("hidden");
-}
 function renderSmokeTick(){
   const s = smk();
   if(!s.mode || $("smokeMain").classList.contains("hidden")) return;
@@ -5543,12 +5737,6 @@ function renderSmokeReasons(){
     w.appendChild(div);
   });
 }
-let smokeUrgeInt = null;
-function smokeUrgeReset(){
-  if(smokeUrgeInt){ clearInterval(smokeUrgeInt); smokeUrgeInt = null; }
-  const t = $("smokeUrgeTime"); if(t) t.textContent = "5:00";
-  const m = $("smokeUrgeMsg"); if(m) m.textContent = "";
-}
 $("smokeModePlan").addEventListener("click", function(){ setSmokeMode("planning"); });
 $("smokeModeQuit").addEventListener("click", function(){ setSmokeMode("quit"); });
 $("smokeModeCut").addEventListener("click", function(){ setSmokeMode("cutting"); });
@@ -5598,23 +5786,10 @@ $("smokeReadyQuit").addEventListener("click", function(){
   saveState(); renderSmoke();
   $("smokePlanCard").scrollIntoView();
 });
-$("smokeUrgeStart").addEventListener("click", function(){
-  smokeUrgeReset();
-  let left = 300;
-  $("smokeUrgeMsg").textContent = "Ride the wave. Notice it rise, peak, and fade \u2014 you don't have to act on it.";
-  smokeUrgeInt = setInterval(function(){
-    left--;
-    $("smokeUrgeTime").textContent = Math.floor(left/60) + ":" + pad(left%60);
-    if(left <= 0){
-      smokeUrgeReset();
-      $("smokeUrgeMsg").textContent = "You rode it out. That wave has passed \u2014 be proud of that. \uD83D\uDCAA";
-    }
-  }, 1000);
-});
-$("smokeUrgeCancel").addEventListener("click", function(){
-  smokeUrgeReset();
-  $("smokeUrgeMsg").textContent = "Timer cancelled. You're still here, and that counts.";
-});
+/* One urge timer (audit cleanup, Part A item 5): the Smoke tab's 5-minute
+   timer is gone — the SOS 10-minute timer is the only one, reached here the
+   same way the breathing button already worked. */
+$("smokeUrgeGo").addEventListener("click", function(){ switchTab("sos"); });
 $("smokeBreath").addEventListener("click", function(){ switchTab("sos"); });
 $("smokeFree").addEventListener("click", function(){ saveSmokeCheckin("free"); });
 $("smokeSmoked").addEventListener("click", function(){ saveSmokeCheckin("smoked"); });
@@ -5839,8 +6014,8 @@ function checkCombBadges(){
 /* ============ RENDER ALL / INIT ============ */
 /* ============ FITNESS ============ */
 const KM_PER_MI = 1.609344;
-const FIT_TYPES = ["Walk","Run","Hike","Bike","Swim","Other"];
-const FIT_ICONS = {Walk:"\uD83D\uDEB6", Run:"\uD83C\uDFC3", Hike:"\uD83E\uDD7E", Bike:"\uD83D\uDEB4", Swim:"\uD83C\uDFCA", Other:"\u2B50"};
+const FIT_TYPES = ["Walk","Run","Hike","Bike","Swim","Strength","Other"];
+const FIT_ICONS = {Walk:"\uD83D\uDEB6", Run:"\uD83C\uDFC3", Hike:"\uD83E\uDD7E", Bike:"\uD83D\uDEB4", Swim:"\uD83C\uDFCA", Strength:"\uD83D\uDCAA", Other:"\u2B50"};
 function distUnit(){ return state.distUnit === "km" ? "km" : "mi"; }
 function toMi(v){
   v = parseFloat(v) || 0;
@@ -6186,6 +6361,113 @@ function renderActList(){
     el.appendChild(div);
   });
 }
+/* ============ STRENGTH (ByeBelly beginner workouts, moved in) ============
+   Workout A/B from ByeBelly — exercises, sets and form cues verbatim.
+   ByeBelly's Mon/Wed/Fri schedule is NOT imposed: do one when it fits
+   your day. Logging writes to the existing activities[] as type
+   "Strength" (minutes, no distance), so it counts toward the movement
+   streak and weekly goals automatically. */
+const STRENGTH_WORKOUTS = [
+  {id:"A", name:"Workout A — Legs + Push", items:[
+    {n:"Bodyweight Squats", sets:"3 × 10", cue:"Feet shoulder-width, sit hips back like a chair, knees track over toes. Chest up."},
+    {n:"Wall → Knee → Floor Push-ups", sets:"3 × 8–15", cue:"Start at the wall. When 3×15 is easy, move to knees, then floor. Body in one straight line."},
+    {n:"Glute Bridges", sets:"3 × 12", cue:"Squeeze your glutes hard at the top for 2 seconds. This is your back’s best friend."},
+    {n:"Plank", sets:"3 × 20–40s", cue:"Elbows under shoulders, ribs down, breathe. Quality over time."}
+  ]},
+  {id:"B", name:"Workout B — Hinge + Pull + Core", items:[
+    {n:"Standing Lunges", sets:"3 × 8/leg", cue:"Long step, torso tall, front knee over ankle. Use a chair for balance at first."},
+    {n:"Backpack Rows", sets:"3 × 12", cue:"Backpack with books, hinge at hips, pull to your ribs. Builds the back beer never did."},
+    {n:"Dead Bug", sets:"3 × 8/side", cue:"Low back pressed into the floor the whole time. Slow opposite arm/leg. Core gold."},
+    {n:"Side Plank", sets:"3 × 20s/side", cue:"Stack feet or drop a knee. Hips up, straight line ear-to-ankle."},
+    {n:"Bird Dog", sets:"3 × 8/side", cue:"Hands/knees, extend opposite arm/leg without rocking your hips."}
+  ]}
+];
+let strWorkout = "A";
+let strRestLeft = 60, strRestTimer = null;
+function renderStrength(){
+  $("strTabA").classList.toggle("on", strWorkout === "A");
+  $("strTabB").classList.toggle("on", strWorkout === "B");
+  const w = STRENGTH_WORKOUTS[strWorkout === "B" ? 1 : 0];
+  let html = "<h3 style=\"margin:0 0 8px;\">" + esc(w.name) + "</h3>";
+  w.items.forEach(function(it){
+    html += '<div class="item"><div><b>' + esc(it.n) + "</b> — " + esc(it.sets) + '<div class="muted">' + esc(it.cue) + "</div></div></div>";
+  });
+  $("strList").innerHTML = html;
+  renderStrRest();
+}
+function renderStrRest(){
+  $("strRestTime").textContent = Math.floor(strRestLeft/60) + ":" + pad(strRestLeft%60);
+  $("strRestStart").textContent = strRestTimer ? "Pause rest" : "Start rest";
+}
+$("strTabA").addEventListener("click", function(){ strWorkout = "A"; renderStrength(); });
+$("strTabB").addEventListener("click", function(){ strWorkout = "B"; renderStrength(); });
+$("strRestStart").addEventListener("click", function(){
+  if(strRestTimer){ clearInterval(strRestTimer); strRestTimer = null; renderStrRest(); return; }
+  if(strRestLeft <= 0) strRestLeft = 60;
+  strRestTimer = setInterval(function(){
+    strRestLeft--;
+    if(strRestLeft <= 0){ clearInterval(strRestTimer); strRestTimer = null; strRestLeft = 0; }
+    renderStrRest();
+  }, 1000);
+  renderStrRest();
+});
+$("strRestReset").addEventListener("click", function(){
+  if(strRestTimer){ clearInterval(strRestTimer); strRestTimer = null; }
+  strRestLeft = 60; renderStrRest();
+});
+$("strLogBtn").addEventListener("click", function(){
+  const w = STRENGTH_WORKOUTS[strWorkout === "B" ? 1 : 0];
+  const mins = Math.max(1, Math.min(180, parseInt($("strMins").value, 10) || 20));
+  state.activities.push({id:uid(), date:todayKey(), type:"Strength", distMi:0, mins:mins, route:w.name, notes:"Bodyweight — " + w.items.length + " exercises", ts:Date.now()});
+  saveState();
+  $("strMsg").textContent = "Logged " + w.name + " (" + mins + " min) — it counts toward your streak and weekly goals.";
+  renderFitness();
+  checkFitnessBadges();
+});
+
+/* ============ HEALTH TOGETHER ============
+   Sleep, energy, movement and waist next to the sober days, one week at
+   a glance — the point is seeing them move together, not any one number.
+   Also carries the protein-first weekly count for the Fuel card. */
+function renderHealthTogether(){
+  const box = $("healthTogether");
+  const names = ["S","M","T","W","T","F","S"];
+  const days = activityDays();
+  let html = '<div class="wstrip" style="grid-template-columns:repeat(7,1fr);">';
+  for(let i=6;i>=0;i--){
+    const d = new Date(); d.setDate(d.getDate()-i);
+    const k = localKey(d);
+    const c = state.checkins[k];
+    const s = state.sleepLog[k];
+    const sober = c ? (c.status === "sober" ? "\u2713" : "\u2013") : "\u00B7";
+    html += '<div class="wday' + (i === 0 ? " today" : "") + '"><div class="b"><div class="fill" style="height:' +
+      (c && c.energy ? (3 + c.energy*7) : 3) + 'px"></div></div>' +
+      "<div>" + names[d.getDay()] + " " + d.getDate() + "</div>" +
+      '<div class="muted">sober ' + sober + "</div>" +
+      '<div class="muted">' + (s && s.hours != null ? s.hours + "h sleep" : "no sleep log") + "</div>" +
+      '<div class="muted">' + (c && c.energy != null ? "energy " + c.energy + "/5" : "no energy dot") + "</div>" +
+      '<div class="muted">' + (days[k] ? "moved \u2713" : "rest day") + "</div></div>";
+  }
+  html += "</div>";
+  box.innerHTML = html;
+  const keys = [];
+  for(let i=6;i>=0;i--){ const d = new Date(); d.setDate(d.getDate()-i); keys.push(localKey(d)); }
+  const logged = keys.map(function(k){ return state.checkins[k]; }).filter(Boolean);
+  const sleepHrs = keys.map(function(k){ return state.sleepLog[k] && state.sleepLog[k].hours; }).filter(function(v){ return v != null; });
+  const soberN = logged.filter(function(c){ return c.status === "sober"; }).length;
+  const waist = waistForDate(todayKey());
+  $("healthTogetherSummary").textContent =
+    "This week: " + soberN + "/" + logged.length + " logged days sober" +
+    " · sleep avg " + fmtAvg(avgNums(sleepHrs)) + "h" +
+    " · energy avg " + fmtAvg(avgNums(logged.map(function(c){ return c.energy; }).filter(function(v){ return v != null; }))) + "/5" +
+    " · movement on " + keys.filter(function(k){ return days[k]; }).length + "/7 days" +
+    (waist != null ? " · waist " + fmtWaist(waist) : " · no waist logged yet") + ".";
+  const pf = logged.filter(function(c){ return c.proteinFirst; }).length;
+  $("proteinWeek").textContent = logged.length
+    ? "Protein-first on " + pf + " of " + logged.length + " logged day" + (logged.length === 1 ? "" : "s") + " this week."
+    : "Log a check-in to start tracking protein-first days.";
+}
+
 function renderFitness(){
   const unit = distUnit();
   $("actDistUnit").textContent = unit;
@@ -6198,6 +6480,9 @@ function renderFitness(){
   renderFitBadges();
   renderFitWeek();
   renderActList();
+  renderStrength();
+  renderGaveBack();
+  renderHealthTogether();
 }
 
 function renderAll(){
@@ -6207,7 +6492,6 @@ function renderAll(){
   renderChips();
   renderStoryCard();
   renderVoiceNotes();
-  renderEvidence();
   renderBattlePlans();
   renderStole();
   renderRefusal();
@@ -6228,6 +6512,7 @@ function renderAll(){
   renderPocket();
   renderFitness();
   renderSmoke();
+  renderCopingList();
   renderTwoQuits();
   renderTwoQuitsStrip();
   renderPatterns();
@@ -6247,21 +6532,22 @@ function renderAll(){
 }
 maybeOnboard();
 renderAll();
-checkMilestones();
 checkChips();
 checkCombBadges();
 checkLetters();
+checkBodyMilestones();
 setInterval(function(){
   renderHero();
   renderCountdown();
   renderSmokeTick();
 }, 1000);
-setInterval(function(){ checkMilestones(); checkChips(); checkCombBadges(); checkLetters(); checkFitnessBadges(); checkSmokeBadges(); }, 60000);
+setInterval(function(){ checkChips(); checkCombBadges(); checkLetters(); checkFitnessBadges(); checkSmokeBadges(); checkBodyMilestones(); }, 60000);
 </script>
 <script>
-// PWA (v1.13): offline service worker + install prompt + tap-to-apply updates.
+// PWA (v1.14): offline service worker + install prompt + tap-to-apply updates.
 // Added 2026-10-20. Self-contained: does not modify the main app script.
-const SF_APP_VERSION='1.13';
+const SF_APP_VERSION='1.14';
+try{var _sv=document.getElementById('sfVerSetup'); if(_sv)_sv.textContent=SF_APP_VERSION;}catch(e){}
 let sfReg=null, sfWaiting=null, sfReloading=false, sfPrompt=null;
 function sfShowBanner(){var b=document.getElementById('sfUpdateBanner'); if(b)b.style.display='block';}
 if('serviceWorker' in navigator){
