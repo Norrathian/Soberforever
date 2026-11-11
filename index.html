@@ -7155,6 +7155,12 @@ function fetchWalks(){
     walksCache = d; walksCacheAt = now; return d;
   });
 }
+function loadCollapsedWeeks(){
+  try{ return JSON.parse(localStorage.getItem("sf_collapsed_weeks") || "{}") || {}; }catch(e){ return {}; }
+}
+function saveCollapsedWeeks(c){
+  try{ localStorage.setItem("sf_collapsed_weeks", JSON.stringify(c)); }catch(e){}
+}
 function renderWalks(){
   var list = $("walkList");
   if(!list) return;
@@ -7185,19 +7191,36 @@ function renderWalks(){
         wd.forEach(function(x){ wSteps += x.steps||0; wMiles += x.miles||0; });
         var mon = keyToDate(wk);
         var sun = new Date(mon); sun.setDate(sun.getDate()+6);
+        var collapsed = loadCollapsedWeeks();
+        var isCollapsed = !!collapsed[wk];
         var head = document.createElement("div");
         head.className = "item";
         if(wi > 0) head.style.marginTop = "14px";
-        head.innerHTML = '<div style="font-weight:700;">Week of ' + esc(fmtShort(mon)) + ' &ndash; ' + esc(fmtShort(sun)) + '</div>' +
+        head.style.cursor = "pointer";
+        head.setAttribute("role", "button");
+        head.innerHTML = '<div style="font-weight:700;"><span class="wk-chev" style="display:inline-block;width:1.1em;">' + (isCollapsed ? '&#9656;' : '&#9662;') + '</span>Week of ' + esc(fmtShort(mon)) + ' &ndash; ' + esc(fmtShort(sun)) + '</div>' +
           '<div class="meta">' + esc(wSteps.toLocaleString()) + ' steps &middot; ' + esc(wMiles.toFixed(1)) + ' mi &middot; ' + wd.length + ' day' + (wd.length === 1 ? '' : 's') + ' with walks</div>';
+        var body = document.createElement("div");
+        body.className = "walk-week-body";
+        if(isCollapsed) body.style.display = "none";
+        head.addEventListener("click", function(){
+          var nowCollapsed = body.style.display !== "none";
+          body.style.display = nowCollapsed ? "none" : "";
+          var chev = head.querySelector(".wk-chev");
+          if(chev) chev.innerHTML = nowCollapsed ? '&#9656;' : '&#9662;';
+          var c = loadCollapsedWeeks();
+          if(nowCollapsed) c[wk] = true; else delete c[wk];
+          saveCollapsedWeeks(c);
+        });
         list.appendChild(head);
         wd.forEach(function(x){
           var div = document.createElement("div");
           div.className = "item";
           div.innerHTML = '<div class="meta">' + esc(fmtDate(x.date)) + (x.partial ? ' &middot; <span class="muted">partial day</span>' : '') + "</div>" +
             '<div style="font-weight:700;">' + esc((x.steps||0).toLocaleString()) + " steps &middot; " + esc((x.miles||0).toFixed(2)) + " mi &middot; " + esc((x.kcal||0).toLocaleString()) + " kcal</div>";
-          list.appendChild(div);
+          body.appendChild(div);
         });
+        list.appendChild(body);
       });
     }
     var upd = $("walkUpdated");
@@ -7290,7 +7313,7 @@ setInterval(function(){ checkChips(); checkCombBadges(); checkLetters(); checkFi
 <script>
 // PWA (v1.16): offline service worker + install prompt + tap-to-apply updates.
 // Added 2026-10-20. Self-contained: does not modify the main app script.
-const SF_APP_VERSION='1.19';
+const SF_APP_VERSION='1.20';
 try{var _sv=document.getElementById('sfVerSetup'); if(_sv)_sv.textContent=SF_APP_VERSION;}catch(e){}
 let sfReg=null, sfWaiting=null, sfReloading=false, sfPrompt=null;
 function sfShowBanner(){var b=document.getElementById('sfUpdateBanner'); if(b)b.style.display='block';}
