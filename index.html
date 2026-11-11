@@ -790,15 +790,16 @@
 
     <div class="card">
       <h2>&#x1F4CA; Stats</h2>
+      <p class="muted" style="margin-top:0;">From Google Fit &mdash; your synced walks.</p>
       <div class="stat3">
-        <div class="s"><div class="v" id="fitTotal">0</div><div class="k">activities</div></div>
+        <div class="s"><div class="v" id="fitTotal">0</div><div class="k">total steps</div></div>
         <div class="s"><div class="v" id="fitDist">0</div><div class="k">total distance</div></div>
-        <div class="s"><div class="v" id="fitTime">0</div><div class="k">total time</div></div>
+        <div class="s"><div class="v" id="fitTime">0</div><div class="k">total calories</div></div>
       </div>
       <div class="stat3 mt8">
         <div class="s"><div class="v" id="fitWeek">0</div><div class="k">this week</div></div>
-        <div class="s"><div class="v" id="fitLongest">&mdash;</div><div class="k">longest</div></div>
-        <div class="s"><div class="v" id="fitPace">&mdash;</div><div class="k">best pace</div></div>
+        <div class="s"><div class="v" id="fitLongest">&mdash;</div><div class="k">longest day</div></div>
+        <div class="s"><div class="v" id="fitPace">&mdash;</div><div class="k">best day</div></div>
       </div>
       <div class="row mt12" style="justify-content:space-between;">
         <span class="muted">&#x1F525; <b id="fitStreak">0</b>-day movement streak</span>
@@ -1724,6 +1725,9 @@ function keyToDate(k){ const p=k.split("-"); return new Date(+p[0], +p[1]-1, +p[
 function fmtDate(k){
   const d = keyToDate(k);
   return d.toLocaleDateString(undefined,{weekday:"short", month:"short", day:"numeric"});
+}
+function fmtShort(d){
+  return d.toLocaleDateString(undefined,{month:"short", day:"numeric"});
 }
 function fmtDateTime(iso){
   if(!iso) return "";
@@ -6775,28 +6779,47 @@ $("goalSave").addEventListener("click", function(){
   saveState();
   renderGoals();
 });
+/* Stats are Fit-only: every tile derives from walks.json (Google Fit daily
+   totals). The hand-logged activity form stays in the tab, but it no longer
+   feeds Stats — stored manual activities are untouched, just not counted here. */
 function renderFitStats(){
-  const n = state.activities.length;
-  $("fitTotal").textContent = n;
-  const totalMi = state.activities.reduce(function(s,a){ return s + (a.distMi||0); }, 0);
-  $("fitDist").textContent = fmtDist(totalMi);
-  const totalMin = state.activities.reduce(function(s,a){ return s + (a.mins||0); }, 0);
-  $("fitTime").textContent = fmtTime(totalMin);
-  $("fitWeek").textContent = fmtDist(weekDistMi(weekKey(new Date())));
-  const lg = longestActivity();
-  $("fitLongest").textContent = lg && lg.distMi > 0 ? fmtDist(lg.distMi) : "\u2014";
-  $("fitPace").textContent = fmtPace(bestPace());
-  $("fitStreak").textContent = activeStreak();
-  if(state.soberDate){
-    const days = activityDays();
-    const sd = localKey(new Date(state.soberDate));
-    let cnt = 0;
-    for(const k in days){ if(k >= sd) cnt++; }
-    const el = daysElapsed();
-    $("fitSoberPct").textContent = el > 0 ? Math.min(100, Math.round(cnt/el*100)) + "%" : "\u2014";
-  } else {
+  fetchWalks().then(function(d){
+    var days = (d.days || []).slice().sort(function(a,b){ return a.date < b.date ? 1 : -1; });
+    var totalSteps = 0, totalMi = 0, totalKcal = 0;
+    days.forEach(function(x){ totalSteps += x.steps||0; totalMi += x.miles||0; totalKcal += x.kcal||0; });
+    $("fitTotal").textContent = totalSteps.toLocaleString();
+    $("fitDist").textContent = fmtDist(totalMi);
+    $("fitTime").textContent = totalKcal.toLocaleString();
+    var curWk = weekKey(new Date());
+    var wkMi = 0;
+    days.forEach(function(x){ if(weekKey(keyToDate(x.date)) === curWk) wkMi += x.miles||0; });
+    $("fitWeek").textContent = fmtDist(wkMi);
+    var longest = null, best = null;
+    days.forEach(function(x){
+      if(!longest || (x.miles||0) > (longest.miles||0)) longest = x;
+      if(!best || (x.steps||0) > (best.steps||0)) best = x;
+    });
+    $("fitLongest").textContent = longest ? fmtDist(longest.miles||0) : "\u2014";
+    $("fitPace").textContent = best ? (best.steps||0).toLocaleString() + " steps" : "\u2014";
+    var daySet = {};
+    days.forEach(function(x){ if((x.steps||0) > 0 || (x.miles||0) > 0) daySet[x.date] = true; });
+    var streak = 0, dd = new Date();
+    if(!daySet[localKey(dd)]) dd.setDate(dd.getDate()-1);
+    while(daySet[localKey(dd)]){ streak++; dd.setDate(dd.getDate()-1); }
+    $("fitStreak").textContent = streak;
+    if(state.soberDate){
+      var sd = localKey(new Date(state.soberDate));
+      var cnt = 0;
+      for(var k in daySet){ if(k >= sd) cnt++; }
+      var el = daysElapsed();
+      $("fitSoberPct").textContent = el > 0 ? Math.min(100, Math.round(cnt/el*100)) + "%" : "\u2014";
+    } else {
+      $("fitSoberPct").textContent = "\u2014";
+    }
+  }).catch(function(){
+    ["fitTotal","fitDist","fitTime","fitWeek","fitLongest","fitPace"].forEach(function(id){ $(id).textContent = "\u2014"; });
     $("fitSoberPct").textContent = "\u2014";
-  }
+  });
 }
 function renderGoals(){
   const g = state.fitnessGoals || {daysPerWeek:0, distPerWeek:0};
@@ -7080,12 +7103,31 @@ function renderWalks(){
       list.innerHTML = '<p class="muted">No walks synced yet.</p>';
     } else {
       list.innerHTML = "";
-      days.slice(0,14).forEach(function(x){
-        var div = document.createElement("div");
-        div.className = "item";
-        div.innerHTML = '<div class="meta">' + esc(fmtDate(x.date)) + (x.partial ? ' &middot; <span class="muted">partial day</span>' : '') + "</div>" +
-          '<div style="font-weight:700;">' + esc((x.steps||0).toLocaleString()) + " steps &middot; " + esc((x.miles||0).toFixed(2)) + " mi &middot; " + esc((x.kcal||0).toLocaleString()) + " kcal</div>";
-        list.appendChild(div);
+      var weeks = {}, order = [];
+      days.forEach(function(x){
+        var wk = weekKey(keyToDate(x.date));
+        if(!weeks[wk]){ weeks[wk] = []; order.push(wk); }
+        weeks[wk].push(x);
+      });
+      order.forEach(function(wk, wi){
+        var wd = weeks[wk];
+        var wSteps = 0, wMiles = 0;
+        wd.forEach(function(x){ wSteps += x.steps||0; wMiles += x.miles||0; });
+        var mon = keyToDate(wk);
+        var sun = new Date(mon); sun.setDate(sun.getDate()+6);
+        var head = document.createElement("div");
+        head.className = "item";
+        if(wi > 0) head.style.marginTop = "14px";
+        head.innerHTML = '<div style="font-weight:700;">Week of ' + esc(fmtShort(mon)) + ' &ndash; ' + esc(fmtShort(sun)) + '</div>' +
+          '<div class="meta">' + esc(wSteps.toLocaleString()) + ' steps &middot; ' + esc(wMiles.toFixed(1)) + ' mi &middot; ' + wd.length + ' day' + (wd.length === 1 ? '' : 's') + ' with walks</div>';
+        list.appendChild(head);
+        wd.forEach(function(x){
+          var div = document.createElement("div");
+          div.className = "item";
+          div.innerHTML = '<div class="meta">' + esc(fmtDate(x.date)) + (x.partial ? ' &middot; <span class="muted">partial day</span>' : '') + "</div>" +
+            '<div style="font-weight:700;">' + esc((x.steps||0).toLocaleString()) + " steps &middot; " + esc((x.miles||0).toFixed(2)) + " mi &middot; " + esc((x.kcal||0).toLocaleString()) + " kcal</div>";
+          list.appendChild(div);
+        });
       });
     }
     var upd = $("walkUpdated");
@@ -7178,7 +7220,7 @@ setInterval(function(){ checkChips(); checkCombBadges(); checkLetters(); checkFi
 <script>
 // PWA (v1.16): offline service worker + install prompt + tap-to-apply updates.
 // Added 2026-10-20. Self-contained: does not modify the main app script.
-const SF_APP_VERSION='1.17';
+const SF_APP_VERSION='1.18';
 try{var _sv=document.getElementById('sfVerSetup'); if(_sv)_sv.textContent=SF_APP_VERSION;}catch(e){}
 let sfReg=null, sfWaiting=null, sfReloading=false, sfPrompt=null;
 function sfShowBanner(){var b=document.getElementById('sfUpdateBanner'); if(b)b.style.display='block';}

@@ -1,5 +1,5 @@
-/* Soberforever service worker — offline cache + tap-to-apply updates (app v1.17) */
-const CACHE = 'soberforever-v18';
+/* Soberforever service worker — offline cache + tap-to-apply updates (app v1.18) */
+const CACHE = 'soberforever-v19';
 const ASSETS = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './walks.json'];
 self.addEventListener('install', e => {
   // No automatic skipWaiting: a new version waits until the user taps
