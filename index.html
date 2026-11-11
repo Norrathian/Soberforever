@@ -470,6 +470,8 @@
       <div id="voiceNotesList"></div>
       <label class="lbl" for="voiceLabel">Label for the next note (optional)</label>
       <input id="voiceLabel" placeholder="e.g. For a rough night" maxlength="60">
+      <label class="lbl" for="voiceFeeling">Feeling tag for the next note (optional)</label>
+      <input id="voiceFeeling" placeholder="e.g. lonely, stressed, proud" maxlength="40">
       <div class="row mt8">
         <button id="voiceRecBtn" class="small">&#x1F534; Record</button>
         <button id="voiceStopBtn" class="small danger hidden">Stop</button>
@@ -485,6 +487,8 @@
       <div id="famNotesList"></div>
       <label class="lbl" for="famName">Who's recording?</label>
       <input id="famName" placeholder="e.g. Haley" maxlength="40">
+      <label class="lbl" for="famFeeling">Feeling tag for the next note (optional)</label>
+      <input id="famFeeling" placeholder="e.g. lonely, stressed, proud" maxlength="40">
       <div class="row mt8">
         <button id="famRecBtn" class="small">&#x1F534; Record</button>
         <button id="famStopBtn" class="small danger hidden">Stop</button>
@@ -588,6 +592,18 @@
       <p class="muted mt8" id="sundayMsg" style="margin-bottom:0;"></p>
       <div id="sundayResult" class="mt12"></div>
       <div id="sundayHistory" class="mt12"></div>
+    </div>
+
+    <div class="card" id="pastSelfCard">
+      <h2>&#x1F4AC; Ask your past self</h2>
+      <p class="muted" style="margin-top:0;">Type how you're feeling. The app digs up your own words — journal, wins, check-in notes — from the last time you felt that way, and what got you through it. Nothing here is made up; if it isn't in your own logs, it says so.</p>
+      <label class="lbl" for="psFeeling">How are you feeling?</label>
+      <input id="psFeeling" placeholder="e.g. lonely, stressed, restless" maxlength="80">
+      <div class="chips mt8" id="psChips"></div>
+      <div class="row mt8">
+        <button id="psSearch" class="small">Ask your past self</button>
+      </div>
+      <div id="psResults" class="mt12"></div>
     </div>
 
     <div class="card">
@@ -2487,7 +2503,7 @@ function renderVoiceNotes(){
     state.voiceNotes.slice().reverse().forEach(function(n){
       const div = document.createElement("div");
       div.className = "item";
-      div.innerHTML = '<div class="meta">' + esc(fmtDateTime(new Date(n.ts).toISOString())) + " &middot; " + esc(fmtDur(n.dur)) + "</div>" +
+      div.innerHTML = '<div class="meta">' + esc(fmtDateTime(new Date(n.ts).toISOString())) + " &middot; " + esc(fmtDur(n.dur)) + (n.feeling ? " &middot; Feeling: " + esc(n.feeling) : "") + "</div>" +
         (n.label ? "<div>" + esc(n.label) + "</div>" : "");
       const acts = document.createElement("div");
       acts.className = "actions";
@@ -2530,7 +2546,7 @@ function renderFamilyNotes(){
     state.familyNotes.slice().reverse().forEach(function(n){
       const div = document.createElement("div");
       div.className = "item";
-      div.innerHTML = '<div class="meta">' + esc(n.name || "Family") + " &middot; " + esc(fmtDateTime(new Date(n.ts).toISOString())) + " &middot; " + esc(fmtDur(n.dur)) + "</div>";
+      div.innerHTML = '<div class="meta">' + esc(n.name || "Family") + " &middot; " + esc(fmtDateTime(new Date(n.ts).toISOString())) + " &middot; " + esc(fmtDur(n.dur)) + (n.feeling ? " &middot; Feeling: " + esc(n.feeling) : "") + "</div>";
       const acts = document.createElement("div");
       acts.className = "actions";
       const play = document.createElement("button");
@@ -2603,8 +2619,8 @@ function voicePickMime(){
    label. */
 let voiceRecTarget = "self";
 const VOICE_REC_UI = {
-  self: {recBtn:"voiceRecBtn", stopBtn:"voiceStopBtn", label:"voiceLabel", time:"voiceRecTime", msg:"voiceMsg"},
-  family: {recBtn:"famRecBtn", stopBtn:"famStopBtn", label:"famName", time:"famRecTime", msg:"famMsg"}
+  self: {recBtn:"voiceRecBtn", stopBtn:"voiceStopBtn", label:"voiceLabel", time:"voiceRecTime", msg:"voiceMsg", feeling:"voiceFeeling"},
+  family: {recBtn:"famRecBtn", stopBtn:"famStopBtn", label:"famName", time:"famRecTime", msg:"famMsg", feeling:"famFeeling"}
 };
 function voiceRecUi(){ return VOICE_REC_UI[voiceRecTarget] || VOICE_REC_UI.self; }
 function updateVoiceRecTime(){
@@ -2620,6 +2636,7 @@ function finishVoiceRecording(){
   $(ui.recBtn).classList.remove("hidden");
   $(ui.stopBtn).classList.add("hidden");
   $(ui.label).disabled = false;
+  if(ui.feeling) $(ui.feeling).disabled = false;
   $(ui.time).textContent = "";
   const dur = Math.max(1, Math.round((Date.now() - voiceRecStart) / 1000));
   const mime = (voiceRec && voiceRec.mimeType) || "audio/webm";
@@ -2629,20 +2646,22 @@ function finishVoiceRecording(){
   if(!blob.size){ $(ui.msg).textContent = "That recording came out empty \u2014 try again."; return; }
   const id = uid();
   const target = voiceRecTarget;
+  const feeling = ui.feeling ? $(ui.feeling).value.trim().slice(0, 40) : "";
   mediaPut("audio", id, blob).then(function(){
     if(target === "family"){
       const name = $(ui.label).value.trim();
-      state.familyNotes.push({id:id, ts:Date.now(), dur:dur, name:name});
+      state.familyNotes.push({id:id, ts:Date.now(), dur:dur, name:name, feeling:feeling});
       $(ui.label).value = "";
-      saveState(); renderFamilyNotes();
+      saveState(); renderFamilyNotes(); renderPastSelfChips();
       $(ui.msg).textContent = "Saved. That's one for the hard nights.";
     } else {
       const label = $(ui.label).value.trim();
-      state.voiceNotes.push({id:id, ts:Date.now(), dur:dur, label:label});
+      state.voiceNotes.push({id:id, ts:Date.now(), dur:dur, label:label, feeling:feeling});
       $(ui.label).value = "";
-      saveState(); renderVoiceNotes();
+      saveState(); renderVoiceNotes(); renderPastSelfChips();
       $(ui.msg).textContent = "Saved. Sober you just left a message for a rough night.";
     }
+    if(ui.feeling) $(ui.feeling).value = "";
   }).catch(function(){
     $(ui.msg).textContent = "Couldn't save that note in this browser.";
   });
@@ -2672,6 +2691,7 @@ function startVoiceRecording(target){
     $(ui.recBtn).classList.add("hidden");
     $(ui.stopBtn).classList.remove("hidden");
     $(ui.label).disabled = true;
+    if(ui.feeling) $(ui.feeling).disabled = true;
     updateVoiceRecTime();
     voiceRecTimer = setInterval(function(){
       updateVoiceRecTime();
@@ -2879,6 +2899,251 @@ function renderSundayHistory(){
   list.forEach(function(r){ html += sundayReviewHTML(r); });
   el.innerHTML = html;
 }
+/* ============ ASK YOUR PAST SELF ============
+   "Ask your past self" (Round 11 #2, v1.16): type how you're feeling and
+   the app searches YOUR OWN words — journal entries, wins, gratitude
+   lines, check-in notes — for the last time you felt that way, and shows
+   what happened next. Honest, simple keyword/stem matching — no fake AI,
+   nothing invented. A match's "what happened next" is the real check-in
+   status for that day and the next day, plus any win logged within three
+   days after. If no outcome was logged, it says so plainly.
+   Voice notes have no transcripts, so they can't be searched by words:
+   untagged notes surface only when recorded on a matching entry's date,
+   and notes tagged with a feeling (optional tag on the recording flow,
+   stored as n.feeling) are directly searchable by that feeling.
+   Moods in check-ins are numbers (1–5), not words, so the quick-pick
+   chips come from the trigger tags he has actually logged plus the
+   feeling tags on his voice notes — his own vocabulary. With nothing
+   logged yet, they fall back to the app's own TRIGGERS list. */
+const PS_STOPWORDS = ["i","am","feeling","feel","felt","the","a","an","and","so","really","very","just","today","right","now","like","me","my","im","it","its","of","to","in","on","at","for","with","about","that","this","is","was","be","been","but","or","if","when","after","all","too","quite","pretty","kind","sort","as","are","have","had","do","did","get","got","go","went","can","could","will","would","should"];
+function psStem(w){
+  w = String(w||"").toLowerCase().replace(/[^a-z']/g,"");
+  if(w.length > 5 && w.slice(-4) === "ness") w = w.slice(0,-4);
+  else if(w.length > 4 && w.slice(-3) === "ing") w = w.slice(0,-3);
+  else if(w.length > 4 && w.slice(-2) === "ly") w = w.slice(0,-2);
+  else if(w.length > 4 && w.slice(-2) === "ed") w = w.slice(0,-2);
+  else if(w.length > 3 && w.slice(-2) === "es") w = w.slice(0,-2);
+  else if(w.length > 3 && w.slice(-1) === "s") w = w.slice(0,-1);
+  return w;
+}
+function psWords(text){ return String(text||"").toLowerCase().split(/[^a-z']+/).filter(Boolean); }
+function psTerms(query){
+  const seen = {};
+  return psWords(query).map(psStem).filter(function(s){
+    if(!s || s.length < 3 || PS_STOPWORDS.indexOf(s) !== -1 || seen[s]) return false;
+    seen[s] = true; return true;
+  });
+}
+function psStemMatch(a, b){
+  if(!a || !b) return false;
+  if(a === b) return true;
+  if(Math.min(a.length, b.length) < 3) return false;
+  return a.indexOf(b) === 0 || b.indexOf(a) === 0;
+}
+function psTextHits(terms, text){
+  const stems = psWords(text).map(psStem);
+  let hits = 0;
+  terms.forEach(function(t){
+    if(stems.some(function(w){ return psStemMatch(t, w); })) hits++;
+  });
+  return hits;
+}
+function psClip(s, n){
+  s = String(s||"");
+  return s.length > n ? s.slice(0, n).trim() + "\u2026" : s;
+}
+function psNextDayKey(k){
+  const d = keyToDate(k); d.setDate(d.getDate()+1); return localKey(d);
+}
+function psOutcomeText(dateKey){
+  const c = state.checkins[dateKey];
+  const nk = psNextDayKey(dateKey);
+  const n = state.checkins[nk];
+  const d3 = psNextDayKey(psNextDayKey(psNextDayKey(dateKey)));
+  const winsAfter = (state.wins||[]).filter(function(w){ return w.date > dateKey && w.date <= d3; });
+  const parts = [];
+  parts.push(c ? ("That day you logged " + (c.status === "sober" ? "sober." : "that you'd drunk.")) : "No check-in logged that day.");
+  parts.push(n ? ("The next day you logged " + (n.status === "sober" ? "sober." : "that you'd drunk.")) : "No check-in logged the next day.");
+  if(winsAfter.length){
+    parts.push("A win within a few days after: \u201C" + winsAfter[0].text + "\u201D" + (winsAfter.length > 1 ? " (and " + (winsAfter.length-1) + " more)" : ""));
+  }
+  return parts.join(" ");
+}
+function psNotesOnDate(dateKey){
+  const out = [];
+  (state.voiceNotes||[]).forEach(function(n){ if(localKey(new Date(n.ts)) === dateKey) out.push({note:n, kind:"self"}); });
+  (state.familyNotes||[]).forEach(function(n){ if(localKey(new Date(n.ts)) === dateKey) out.push({note:n, kind:"family"}); });
+  return out;
+}
+function pastSelfSearch(query){
+  const terms = psTerms(query);
+  const rawWords = psWords(query);
+  const results = [];
+  function add(source, date, text, score){
+    if(score > 0) results.push({source:source, date:date, text:text, score:score});
+  }
+  (state.journal||[]).forEach(function(j){
+    const titleHits = psTextHits(terms, j.title||"");
+    const bodyHits = psTextHits(terms, j.body||"");
+    add("Journal", j.date, (j.title ? j.title + " \u2014 " : "") + (j.body||""), titleHits*2 + bodyHits);
+  });
+  (state.wins||[]).forEach(function(w){
+    add("Win", w.date, w.text||"", psTextHits(terms, w.text||"")*2);
+  });
+  (state.gratitude||[]).forEach(function(g){
+    add("Gratitude", g.date, g.text||"", psTextHits(terms, g.text||"")*2);
+  });
+  Object.keys(state.checkins||{}).forEach(function(k){
+    const c = state.checkins[k];
+    let score = psTextHits(terms, c.note||"")*2;
+    let tagHit = false;
+    (c.triggers||[]).forEach(function(t){
+      if(rawWords.indexOf(String(t).toLowerCase()) !== -1) tagHit = true;
+    });
+    if(tagHit) score += 3;
+    if(score > 0) add("Check-in note", k, c.note || ("Logged " + c.status + " that day."), score);
+  });
+  const voiceMatches = [];
+  function voiceList(arr, kind){
+    (arr||[]).forEach(function(n){
+      const tag = (n.feeling||"").trim();
+      const label = (n.label||n.name||"").trim();
+      const tHits = psTextHits(terms, tag) + psTextHits(terms, label);
+      const exactTag = tag && rawWords.indexOf(tag.toLowerCase()) !== -1;
+      if(tHits > 0 || exactTag) voiceMatches.push({note:n, kind:kind, tag:tag});
+    });
+  }
+  voiceList(state.voiceNotes, "self");
+  voiceList(state.familyNotes||[], "family");
+  results.sort(function(a,b){ return (b.score - a.score) || (a.date < b.date ? 1 : -1); });
+  voiceMatches.sort(function(a,b){ return (b.note.ts||0) - (a.note.ts||0); });
+  return {text:results.slice(0,5), voice:voiceMatches.slice(0,3), noTerms:terms.length === 0};
+}
+function pastSelfChips(){
+  const seen = {};
+  const out = [];
+  function addTag(t){
+    const v = String(t||"").trim();
+    if(!v) return;
+    const k = v.toLowerCase();
+    if(seen[k]) return; seen[k] = true; out.push(v);
+  }
+  Object.keys(state.checkins||{}).forEach(function(k){
+    (state.checkins[k].triggers||[]).forEach(addTag);
+  });
+  (state.voiceNotes||[]).forEach(function(n){ addTag(n.feeling); });
+  (state.familyNotes||[]).forEach(function(n){ addTag(n.feeling); });
+  if(!out.length) TRIGGERS.forEach(addTag);
+  return out;
+}
+function renderPastSelfChips(){
+  const el = $("psChips");
+  if(!el) return;
+  el.innerHTML = "";
+  pastSelfChips().forEach(function(t){
+    const b = document.createElement("button");
+    b.type = "button"; b.textContent = t;
+    b.addEventListener("click", function(){
+      $("psFeeling").value = t;
+      runPastSelfSearch();
+    });
+    el.appendChild(b);
+  });
+}
+let pastSelfLastQuery = "";
+let pastSelfLast = null;
+function runPastSelfSearch(){
+  const q = ($("psFeeling").value||"").trim();
+  pastSelfLastQuery = q;
+  pastSelfLast = q ? pastSelfSearch(q) : null;
+  renderPastSelfResults();
+}
+function psPlayBtn(note, kind){
+  return '<button class="small" data-ps-play="' + esc(note.id) + '" data-ps-kind="' + kind + '">' +
+    (voicePlayingId === note.id ? "Stop" : "Play") + "</button>";
+}
+function pastSelfPlayNote(id, kind){
+  const arr = kind === "family" ? (state.familyNotes||[]) : state.voiceNotes;
+  const n = (arr||[]).filter(function(q){ return q.id === id; })[0];
+  if(!n) return;
+  if(voicePlayingId === id){ stopVoicePlay(); renderPastSelfResults(); return; }
+  playVoiceNote(n).then(function(){
+    if(voiceAudio) voiceAudio.addEventListener("ended", renderPastSelfResults);
+    renderPastSelfResults();
+  }).catch(function(){
+    stopVoicePlay(); renderPastSelfResults();
+  });
+}
+function renderPastSelfResults(){
+  const el = $("psResults");
+  if(!el) return;
+  if(!pastSelfLast){
+    el.innerHTML = '<p class="muted" style="margin:0;">Type a feeling above — or tap one of the words from your own logs. No judgment, just your own words talking back.</p>';
+    return;
+  }
+  const r = pastSelfLast;
+  const q = pastSelfLastQuery;
+  let html = "";
+  if(r.noTerms){
+    html += '<p style="margin:0;">That didn&rsquo;t give me a word to search on — try one feeling word, like &ldquo;lonely&rdquo; or &ldquo;stressed&rdquo;.</p>';
+    el.innerHTML = html;
+    return;
+  }
+  if(!r.text.length && !r.voice.length){
+    html += '<p style="margin:0 0 8px;">Nothing in your own words yet for &ldquo;' + esc(q) + '&rdquo; — and that&rsquo;s honest, not a failure. The more you write down how you feel, the more this finds next time.</p>';
+    const lastWin = (state.wins||[]).slice().sort(function(a,b){ return a.date < b.date ? 1 : -1; })[0];
+    if(lastWin){
+      html += '<p style="margin:0 0 8px;">The closest thing you&rsquo;ve got is your most recent win, from ' + esc(fmtDate(lastWin.date)) + ': &ldquo;' + esc(lastWin.text) + '&rdquo;</p>';
+    }
+    html += '<button class="small" data-ps-write="1">Write how you feel right now</button>';
+    el.innerHTML = html;
+    return;
+  }
+  if(r.voice.length){
+    html += '<h3 style="margin:0 0 8px;">Voice notes tagged with this feeling</h3>';
+    r.voice.forEach(function(vm){
+      const n = vm.note;
+      const who = vm.kind === "family" ? (n.name || "Family") : "Sober you";
+      html += '<div class="item"><div class="meta">' + esc(who) + ' &middot; ' + esc(fmtDate(localKey(new Date(n.ts)))) + ' &middot; ' + esc(fmtDur(n.dur)) + (vm.tag ? ' &middot; Feeling: ' + esc(vm.tag) : "") + '</div>' +
+        '<div>' + esc(n.label || n.name || "Voice note") + '</div>' +
+        '<div class="actions">' + psPlayBtn(n, vm.kind) + '</div></div>';
+    });
+  }
+  if(r.text.length){
+    html += '<h3 style="margin:' + (r.voice.length ? '16px' : '0') + ' 0 8px;">Your own words, from the last time</h3>';
+    r.text.forEach(function(m){
+      html += '<div class="item"><div class="meta">' + esc(m.source) + ' &middot; ' + esc(fmtDate(m.date)) + '</div>' +
+        '<div>\u201C' + esc(psClip(m.text, 280)) + '\u201D</div>' +
+        '<div class="meta" style="margin-top:8px;">What happened next</div>' +
+        '<div>' + esc(psOutcomeText(m.date)) + '</div>';
+      const notes = psNotesOnDate(m.date);
+      if(notes.length){
+        html += '<div class="meta" style="margin-top:8px;">You also recorded a note that day</div><div class="actions">';
+        notes.forEach(function(nn){
+          html += psPlayBtn(nn.note, nn.kind);
+        });
+        html += '</div>';
+      }
+      html += '</div>';
+    });
+  }
+  el.innerHTML = html;
+}
+$("psSearch").addEventListener("click", runPastSelfSearch);
+$("psFeeling").addEventListener("keydown", function(e){
+  if(e.key === "Enter"){ e.preventDefault(); runPastSelfSearch(); }
+});
+$("psResults").addEventListener("click", function(e){
+  const t = e.target;
+  if(!t) return;
+  if(t.getAttribute("data-ps-write")){
+    const jb = $("jBody");
+    if(jb){ jb.scrollIntoView({behavior:"smooth", block:"center"}); jb.focus(); }
+    return;
+  }
+  const pid = t.getAttribute("data-ps-play");
+  if(pid) pastSelfPlayNote(pid, t.getAttribute("data-ps-kind") || "self");
+});
 function renderFocusStrip(){
   const card = $("focusCard");
   if(!card) return;
@@ -6801,6 +7066,7 @@ function renderAll(){
   renderStole();
   renderRefusal();
   renderSundayHistory();
+  renderPastSelfChips();
   renderDailyPhotos();
   renderFocusStrip();
   renderPledge();
@@ -6849,9 +7115,9 @@ setInterval(function(){
 setInterval(function(){ checkChips(); checkCombBadges(); checkLetters(); checkFitnessBadges(); checkSmokeBadges(); checkBodyMilestones(); }, 60000);
 </script>
 <script>
-// PWA (v1.15): offline service worker + install prompt + tap-to-apply updates.
+// PWA (v1.16): offline service worker + install prompt + tap-to-apply updates.
 // Added 2026-10-20. Self-contained: does not modify the main app script.
-const SF_APP_VERSION='1.15';
+const SF_APP_VERSION='1.16';
 try{var _sv=document.getElementById('sfVerSetup'); if(_sv)_sv.textContent=SF_APP_VERSION;}catch(e){}
 let sfReg=null, sfWaiting=null, sfReloading=false, sfPrompt=null;
 function sfShowBanner(){var b=document.getElementById('sfUpdateBanner'); if(b)b.style.display='block';}
