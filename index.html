@@ -821,6 +821,7 @@
 
     <div class="card">
       <h2>&#x1F3AF; Weekly goals</h2>
+      <p class="muted" style="margin-top:0;">Progress measured from your Google Fit walks this week.</p>
       <div class="grid2">
         <div>
           <label class="lbl" for="goalDaysInput">Active days / week</label>
@@ -6821,13 +6822,27 @@ function renderFitStats(){
     $("fitSoberPct").textContent = "\u2014";
   });
 }
+/* Weekly goals: targets are James's saved settings; progress is measured
+   from Google Fit walks (walks.json) for the current Monday–Sunday week —
+   not from hand-logged activities. */
 function renderGoals(){
   const g = state.fitnessGoals || {daysPerWeek:0, distPerWeek:0};
   $("goalDaysInput").value = g.daysPerWeek || "";
   $("goalDistInput").value = g.distPerWeek ? Math.round(fromMi(g.distPerWeek)*10)/10 : "";
   $("goalDistUnit").textContent = distUnit();
   const wk = weekKey(new Date());
-  const wd = weekActiveDays(wk), wmi = weekDistMi(wk);
+  fetchWalks().then(function(d){
+    var wd = 0, wmi = 0;
+    (d.days || []).forEach(function(x){
+      if(weekKey(keyToDate(x.date)) === wk){
+        if((x.steps||0) > 0 || (x.miles||0) > 0) wd++;
+        wmi += x.miles||0;
+      }
+    });
+    fillGoalBars(g, wd, wmi);
+  }).catch(function(){ fillGoalBars(g, 0, 0); });
+}
+function fillGoalBars(g, wd, wmi){
   if(g.daysPerWeek > 0){
     const pct = Math.min(100, Math.round(wd/g.daysPerWeek*100));
     $("goalDaysBar").style.width = pct + "%";
