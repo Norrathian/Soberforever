@@ -842,6 +842,7 @@
 
     <div class="card">
       <h2>&#x1F4C8; Trends</h2>
+      <p class="muted" style="margin-top:0;">From Google Fit &mdash; your synced walks.</p>
       <h3>Distance &mdash; last 14 days</h3>
       <div class="chartbox" id="fitChart14"></div>
       <h3>Weekly totals &mdash; last 8 weeks</h3>
@@ -850,11 +851,13 @@
 
     <div class="card">
       <h2>&#x1F3C6; Fitness badges</h2>
+      <p class="muted" style="margin-top:0;">Earned from your Google Fit walks.</p>
       <div class="shelf" id="fitBadgeShelf"></div>
     </div>
 
     <div class="card">
       <h2>&#x1F4C5; This week</h2>
+      <p class="muted" style="margin-top:0;">Days with a synced Google Fit walk.</p>
       <div class="fitstrip" id="fitWeekStrip"></div>
     </div>
 
@@ -6668,42 +6671,79 @@ function bestPace(){
   });
   return bp;
 }
+/* Fit-derived movement (walks.json, Google Fit daily totals). The hand-logged
+   helpers activityDays()/activeStreak() stay untouched — Sunday Review and
+   Health Together still use them. These are the Fitness tab's Fit-only
+   versions: day set, totals, and consecutive-days streak. */
+function fitDaySet(d){
+  var s = {};
+  (d.days || []).forEach(function(x){ if((x.steps||0) > 0 || (x.miles||0) > 0) s[x.date] = true; });
+  return s;
+}
+function fitTotals(d){
+  var steps = 0, mi = 0, days = 0;
+  (d.days || []).forEach(function(x){
+    if((x.steps||0) > 0 || (x.miles||0) > 0) days++;
+    steps += x.steps||0; mi += x.miles||0;
+  });
+  return {steps: steps, miles: mi, days: days};
+}
+function fitStreak(d){
+  var daySet = fitDaySet(d);
+  var n = 0, dd = new Date();
+  if(!daySet[localKey(dd)]) dd.setDate(dd.getDate()-1);
+  while(daySet[localKey(dd)]){ n++; dd.setDate(dd.getDate()-1); }
+  return n;
+}
 const FIT_BADGES = [
-  {id:"fitFirst", n:1,   kind:"count",  label:"First activity", ico:"\uD83C\uDFC1"},
-  {id:"fitA10",   n:10,  kind:"count",  label:"10 activities",  ico:"\uD83E\uDD47"},
-  {id:"fitA25",   n:25,  kind:"count",  label:"25 activities",  ico:"\uD83E\uDD48"},
-  {id:"fitA50",   n:50,  kind:"count",  label:"50 activities",  ico:"\uD83E\uDD49"},
-  {id:"fitA100",  n:100, kind:"count",  label:"100 activities", ico:"\uD83C\uDFC6"},
+  {id:"fitFirst", n:1,   kind:"count",  label:"First walk", ico:"\uD83C\uDFC1"},
+  {id:"fitA10",   n:10,  kind:"count",  label:"10 walk days",  ico:"\uD83E\uDD47"},
+  {id:"fitA25",   n:25,  kind:"count",  label:"25 walk days",  ico:"\uD83E\uDD48"},
+  {id:"fitA50",   n:50,  kind:"count",  label:"50 walk days",  ico:"\uD83E\uDD49"},
+  {id:"fitA100",  n:100, kind:"count",  label:"100 walk days", ico:"\uD83C\uDFC6"},
   {id:"fitD25",   n:25,  kind:"dist",   label:"25 mi",          ico:"\uD83D\uDEB6"},
   {id:"fitD50",   n:50,  kind:"dist",   label:"50 mi",          ico:"\uD83E\uDD7E"},
   {id:"fitD100",  n:100, kind:"dist",   label:"100 mi",         ico:"\u26F0"},
   {id:"fitD250",  n:250, kind:"dist",   label:"250 mi",         ico:"\uD83C\uDF0D"},
   {id:"fitStreak7", n:7, kind:"streak", label:"7-day streak",   ico:"\uD83D\uDD25"}
 ];
-function fitBadgeSub(b){
+function fitBadgeSub(b, val){
   if(b.kind === "dist") return "That's real ground covered. Your legs are writing quite a story.";
   if(b.kind === "streak") return "Seven days in a row of showing up for your body. That's a habit taking root.";
-  return state.activities.length + " activities logged. Every single one of them counted.";
+  return val + " walk days from Google Fit. Every single one of them counted.";
 }
 function checkFitnessBadges(){
-  const count = state.activities.length;
-  const totalMi = state.activities.reduce(function(s,a){ return s + (a.distMi||0); }, 0);
-  const streak = activeStreak();
-  for(const b of FIT_BADGES){
-    const val = b.kind === "count" ? count : b.kind === "dist" ? totalMi : streak;
-    if(val >= b.n && state.celebrated.indexOf(b.id) === -1){
-      state.celebrated.push(b.id);
+  fetchWalks().then(function(d){
+    var t = fitTotals(d);
+    var streak = fitStreak(d);
+    /* First Fit-based evaluation: silently mark badges already earned, so
+       celebrations only fire for milestones reached from here on — not for
+       last week's walks. */
+    if(!state.fitBadgesSeeded){
+      state.fitBadgesSeeded = true;
+      FIT_BADGES.forEach(function(b){
+        var val = b.kind === "count" ? t.days : b.kind === "dist" ? t.miles : streak;
+        if(val >= b.n && state.celebrated.indexOf(b.id) === -1) state.celebrated.push(b.id);
+      });
       saveState();
-      const lbl = b.kind === "dist" ? fitDistLabel(b.n) : b.label;
-      showCelebration(
-        lbl + "!",
-        fitBadgeSub(b),
-        b.ico + " " + lbl.toUpperCase(),
-        "Soberforever \u2022 one day at a time"
-      );
-      break;
+      return;
     }
-  }
+    for(const b of FIT_BADGES){
+      const val = b.kind === "count" ? t.days : b.kind === "dist" ? t.miles : streak;
+      if(val >= b.n && state.celebrated.indexOf(b.id) === -1){
+        state.celebrated.push(b.id);
+        saveState();
+        const lbl = b.kind === "dist" ? fitDistLabel(b.n) : b.label;
+        showCelebration(
+          lbl + "!",
+          fitBadgeSub(b, val),
+          b.ico + " " + lbl.toUpperCase(),
+          "Soberforever \u2022 one day at a time"
+        );
+        break;
+      }
+    }
+  }).catch(function(){});
 }
 function resetActForm(){
   $("actId").value = "";
@@ -6872,70 +6912,85 @@ function fillGoalBars(g, wd, wmi){
       : "This week: " + wd + " active day" + (wd === 1 ? "" : "s") + ", " + fmtDist(wmi) + ". Keep moving.";
   }
 }
+/* Trends charts are Fit-only: daily / weekly miles from walks.json. */
 function renderFitChart14(){
-  const per = {};
-  state.activities.forEach(function(a){ per[a.date] = (per[a.date]||0) + a.distMi; });
-  const vals = [];
-  for(let i=13;i>=0;i--){ const d = new Date(); d.setDate(d.getDate()-i); vals.push(per[localKey(d)]||0); }
-  const mx = Math.max.apply(null, vals.concat([0.001]));
-  const names = ["S","M","T","W","T","F","S"];
-  let html = "";
-  for(let i=0;i<14;i++){
-    const d = new Date(); d.setDate(d.getDate()-(13-i));
-    const h = Math.min(38, 3 + (vals[i]/mx)*35);
-    html += '<div class="wday' + (i === 13 ? " today" : "") + '"><div class="b"><div class="fill" style="height:' + h.toFixed(0) + 'px"></div></div>' +
-      "<div>" + names[d.getDay()] + '</div><div class="muted">' + (vals[i] > 0 ? fromMi(vals[i]).toFixed(1) : "") + "</div></div>";
-  }
-  $("fitChart14").innerHTML = '<div class="wstrip" style="grid-template-columns:repeat(14,1fr);">' + html + "</div>" +
-    '<div class="legend"><span><span class="sw" style="background:var(--accent2);"></span>distance (' + esc(distUnit()) + ")</span></div>";
+  fetchWalks().then(function(d){
+    const per = {};
+    (d.days || []).forEach(function(x){ per[x.date] = (per[x.date]||0) + (x.miles||0); });
+    const vals = [];
+    for(let i=13;i>=0;i--){ const d2 = new Date(); d2.setDate(d2.getDate()-i); vals.push(per[localKey(d2)]||0); }
+    const mx = Math.max.apply(null, vals.concat([0.001]));
+    const names = ["S","M","T","W","T","F","S"];
+    let html = "";
+    for(let i=0;i<14;i++){
+      const d2 = new Date(); d2.setDate(d2.getDate()-(13-i));
+      const h = Math.min(38, 3 + (vals[i]/mx)*35);
+      html += '<div class="wday' + (i === 13 ? " today" : "") + '"><div class="b"><div class="fill" style="height:' + h.toFixed(0) + 'px"></div></div>' +
+        "<div>" + names[d2.getDay()] + '</div><div class="muted">' + (vals[i] > 0 ? fromMi(vals[i]).toFixed(1) : "") + "</div></div>";
+    }
+    $("fitChart14").innerHTML = '<div class="wstrip" style="grid-template-columns:repeat(14,1fr);">' + html + "</div>" +
+      '<div class="legend"><span><span class="sw" style="background:var(--accent2);"></span>distance (' + esc(distUnit()) + ")</span></div>";
+  }).catch(function(){
+    $("fitChart14").innerHTML = '<p class="muted">Walk data couldn\'t be loaded.</p>';
+  });
 }
 function renderFitChart8(){
-  const per = {};
-  state.activities.forEach(function(a){
-    const w = weekKey(keyToDate(a.date));
-    per[w] = (per[w]||0) + a.distMi;
+  fetchWalks().then(function(d){
+    const per = {};
+    (d.days || []).forEach(function(x){
+      const w = weekKey(keyToDate(x.date));
+      per[w] = (per[w]||0) + (x.miles||0);
+    });
+    const cur = weekKey(new Date());
+    const weeks = [];
+    for(let i=7;i>=0;i--){ const d2 = new Date(); d2.setDate(d2.getDate()-i*7); weeks.push(weekKey(d2)); }
+    const vals = weeks.map(function(w){ return per[w]||0; });
+    const mx = Math.max.apply(null, vals.concat([0.001]));
+    let html = "";
+    weeks.forEach(function(w,i){
+      const d2 = keyToDate(w);
+      const h = Math.min(38, 3 + (vals[i]/mx)*35);
+      html += '<div class="wday' + (w === cur ? " today" : "") + '"><div class="b"><div class="fill" style="height:' + h.toFixed(0) + 'px"></div></div>' +
+        "<div>" + (d2.getMonth()+1) + "/" + d2.getDate() + '</div><div class="muted">' + (vals[i] > 0 ? fromMi(vals[i]).toFixed(0) : "") + "</div></div>";
+    });
+    $("fitChart8").innerHTML = '<div class="wstrip" style="grid-template-columns:repeat(8,1fr);">' + html + "</div>";
+  }).catch(function(){
+    $("fitChart8").innerHTML = '<p class="muted">Walk data couldn\'t be loaded.</p>';
   });
-  const cur = weekKey(new Date());
-  const weeks = [];
-  for(let i=7;i>=0;i--){ const d = new Date(); d.setDate(d.getDate()-i*7); weeks.push(weekKey(d)); }
-  const vals = weeks.map(function(w){ return per[w]||0; });
-  const mx = Math.max.apply(null, vals.concat([0.001]));
-  let html = "";
-  weeks.forEach(function(w,i){
-    const d = keyToDate(w);
-    const h = Math.min(38, 3 + (vals[i]/mx)*35);
-    html += '<div class="wday' + (w === cur ? " today" : "") + '"><div class="b"><div class="fill" style="height:' + h.toFixed(0) + 'px"></div></div>' +
-      "<div>" + (d.getMonth()+1) + "/" + d.getDate() + '</div><div class="muted">' + (vals[i] > 0 ? fromMi(vals[i]).toFixed(0) : "") + "</div></div>";
-  });
-  $("fitChart8").innerHTML = '<div class="wstrip" style="grid-template-columns:repeat(8,1fr);">' + html + "</div>";
 }
 function renderFitBadges(){
-  const count = state.activities.length;
-  const totalMi = state.activities.reduce(function(s,a){ return s + (a.distMi||0); }, 0);
-  const streak = activeStreak();
-  let sh = "";
-  for(const b of FIT_BADGES){
-    const val = b.kind === "count" ? count : b.kind === "dist" ? totalMi : streak;
-    const earned = val >= b.n;
-    const lbl = b.kind === "dist" ? fitDistLabel(b.n) : b.label;
-    sh += '<div class="badge' + (earned ? " earned" : "") + '"><div class="b">' + b.ico + "</div><div>" + esc(lbl) + "</div></div>";
-  }
-  $("fitBadgeShelf").innerHTML = sh;
+  fetchWalks().then(function(d){
+    var t = fitTotals(d);
+    var streak = fitStreak(d);
+    let sh = "";
+    for(const b of FIT_BADGES){
+      const val = b.kind === "count" ? t.days : b.kind === "dist" ? t.miles : streak;
+      const earned = val >= b.n;
+      const lbl = b.kind === "dist" ? fitDistLabel(b.n) : b.label;
+      sh += '<div class="badge' + (earned ? " earned" : "") + '"><div class="b">' + b.ico + "</div><div>" + esc(lbl) + "</div></div>";
+    }
+    $("fitBadgeShelf").innerHTML = sh;
+  }).catch(function(){
+    $("fitBadgeShelf").innerHTML = "";
+  });
 }
+/* This week strip: days with a synced Google Fit walk (Monday–Sunday). */
 function renderFitWeek(){
-  const start = keyToDate(weekKey(new Date()));
-  const days = activityDays();
-  const names = ["M","T","W","T","F","S","S"];
-  const tk = todayKey();
-  let html = "";
-  for(let i=0;i<7;i++){
-    const d = new Date(start); d.setDate(d.getDate()+i);
-    const k = localKey(d);
-    const on = !!days[k];
-    html += '<div class="fday' + (on ? " active" : "") + '"' + (k === tk ? ' style="border-color:var(--accent);"' : "") + ">" +
-      '<div class="d">' + names[i] + '</div><div class="dot"></div><div class="m">' + d.getDate() + "</div></div>";
-  }
-  $("fitWeekStrip").innerHTML = html;
+  fetchWalks().then(function(d){
+    var daySet = fitDaySet(d);
+    const start = keyToDate(weekKey(new Date()));
+    const names = ["M","T","W","T","F","S","S"];
+    const tk = todayKey();
+    let html = "";
+    for(let i=0;i<7;i++){
+      const dt = new Date(start); dt.setDate(dt.getDate()+i);
+      const k = localKey(dt);
+      const on = !!daySet[k];
+      html += '<div class="fday' + (on ? " active" : "") + '"' + (k === tk ? ' style="border-color:var(--accent);"' : "") + ">" +
+        '<div class="d">' + names[i] + '</div><div class="dot"></div><div class="m">' + dt.getDate() + "</div></div>";
+    }
+    $("fitWeekStrip").innerHTML = html;
+  }).catch(function(){});
 }
 function renderActList(){
   const el = $("actList");
@@ -7235,7 +7290,7 @@ setInterval(function(){ checkChips(); checkCombBadges(); checkLetters(); checkFi
 <script>
 // PWA (v1.16): offline service worker + install prompt + tap-to-apply updates.
 // Added 2026-10-20. Self-contained: does not modify the main app script.
-const SF_APP_VERSION='1.18';
+const SF_APP_VERSION='1.19';
 try{var _sv=document.getElementById('sfVerSetup'); if(_sv)_sv.textContent=SF_APP_VERSION;}catch(e){}
 let sfReg=null, sfWaiting=null, sfReloading=false, sfPrompt=null;
 function sfShowBanner(){var b=document.getElementById('sfUpdateBanner'); if(b)b.style.display='block';}
