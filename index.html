@@ -266,6 +266,10 @@
   /* journey sections (audit cleanup, Part A) */
   .jsec-h{font-size:.95rem; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); margin:22px 4px 2px;}
   .jsec:first-child .jsec-h{margin-top:6px;}
+  /* "Is this normal?" guide topics */
+  .ntopic{padding:12px 0 2px; border-top:1px solid var(--line);}
+  .ntopic:first-child{border-top:none; padding-top:2px;}
+  .ntopic p{margin:6px 0;}
   @media print{
     body{padding-bottom:0;}
     body > *:not(#reportOverlay){display:none !important;}
@@ -982,6 +986,13 @@
       <p class="muted" style="margin-top:0;">One week, side by side. Sleep, energy, movement and waist all move with the sober days — this is where that shows up.</p>
       <div id="healthTogether"></div>
       <p class="muted mt8" id="healthTogetherSummary" style="margin-bottom:0;"></p>
+    </div>
+
+    <div class="card">
+      <h2>&#x1F914; Is this normal?</h2>
+      <p class="muted" style="margin-top:0;">The rough side of early sobriety, in plain words. These show up for a lot of people in the first weeks and months after quitting — none of them mean you're doing it wrong, and they ease. Where you've been logging, your own numbers are in here too, so you can watch them lift.</p>
+      <div id="normalTopics"></div>
+      <p class="muted mt8" style="margin-bottom:0;">One honest note: this is general information about what's common, not medical advice — this app isn't a doctor. If something here stays heavy for weeks instead of easing, it's worth raising at a doctor visit.</p>
     </div>
 
     </div>
@@ -7140,6 +7151,139 @@ function renderHealthTogether(){
     : "Log a check-in to start tracking protein-first days.";
 }
 
+/* ============ IS THIS NORMAL? ============
+   A plain guide to the rough side of early sobriety — what each thing is,
+   why it happens, that it's typical at this stage, and that it eases.
+   Where he already logs (mood, energy, sleep), his own recent numbers ride
+   along so he can see it lifting. Nothing new is tracked for this card:
+   every line is derived from check-ins and the sleep log at render time,
+   and where there is no log (dreams, sweet tooth) the card says so plainly
+   instead of inventing a metric. General information, not medical advice. */
+const NORMAL_TOPICS = [
+  { id:"dreams", icon:"&#x1F319;", title:"Drinking dreams", tie:"none",
+    noneText:"Nothing to log here — dreams don't get written down. This one's just common, and it eases.",
+    body:[
+      "You dream that you drank — sometimes you even wake up half-convinced you slipped. You didn't. Nothing happened, and the streak is exactly where you left it.",
+      "Drinking lived in your head for a long time, and the brain keeps running that old wiring in sleep while it rewires. The dreams are most common in the first few months and they fade as the new wiring takes over. A lot of people find the morning-after relief is its own proof: sober-you is the one who wakes up."
+    ]},
+  { id:"sweet", icon:"&#x1F366;", title:"A new sweet tooth", tie:"none",
+    noneText:"Nothing to log here — there's no dessert ledger in this app, on purpose. This one's just common.",
+    body:[
+      "Ice cream at night, peanut butter cups out of nowhere — even for someone who never cared much for sweets. It can feel strange, but it's one of the most common things people notice in early sobriety.",
+      "Alcohol was a steady supply of fast sugar and quick calories. Take it away and your body goes looking for the same quick hit somewhere else, and sugar is the nearest legal substitute. It usually settles on its own as your eating finds its rhythm again."
+    ]},
+  { id:"mood", icon:"&#x1F4C9;", title:"Mood dips", tie:"mood",
+    body:[
+      "Days where everything feels grey and heavy for no clear reason — nothing happened, and it still feels like wading through mud.",
+      "Your brain spent years getting its feel-good chemistry from a bottle, and making its own again takes time. The levels wobble before they level out, so low days in the first stretch are part of the repair, not a sign it isn't working. They tend to come less often, and stay for less time, as the weeks stack up."
+    ]},
+  { id:"fog", icon:"&#x1F32B;&#xFE0F;", title:"Brain fog", tie:"energy",
+    body:[
+      "Losing your train of thought mid-sentence. Rereading the same line twice. Feeling a step slower than you know you are.",
+      "Sleep is still resetting and your brain is doing heavy repair work in the background — focus is one of the things that lags behind. It clears gradually over the first few months. Sleep, real food, and a walk genuinely help this one; they're not just nice ideas."
+    ]},
+  { id:"flat", icon:"&#x1FA91;", title:"Flat days", tie:"flat",
+    body:[
+      "Different from a bad mood: nothing's wrong exactly, you just feel flat. No spark, no interest, everything at half volume — even things you normally enjoy.",
+      "That's the same chemistry rebalancing. Your reward system is recalibrating to ordinary life, and ordinary life takes a while to register again. Energy and interest creep back quietly; most people notice a real lift somewhere in the second and third month."
+    ]},
+  { id:"sleep", icon:"&#x1F634;", title:"Sleep that's still settling", tie:"sleep",
+    body:[
+      "For a while, sleep after quitting can be lighter, broken, or just odd — wide awake at 3 a.m., or tired all day and restless all night.",
+      "Alcohol used to knock you out rather than put you to sleep, so your body has to relearn the real thing. This is one of the slowest pieces to settle — and one of the most reliable to improve. Deeper, steadier sleep keeps coming back over the first months."
+    ]}
+];
+function normalCheckinRows(field){
+  const rows = [];
+  Object.keys(state.checkins).forEach(function(k){
+    const c = state.checkins[k];
+    if(c && c[field] != null) rows.push({k:k, v:c[field]});
+  });
+  rows.sort(function(a,b){ return a.k < b.k ? 1 : -1; });
+  return rows;
+}
+function normalSleepRows(){
+  const rows = [];
+  Object.keys(state.sleepLog).forEach(function(k){
+    const s = state.sleepLog[k];
+    if(s && s.hours != null) rows.push({k:k, v:s.hours});
+  });
+  rows.sort(function(a,b){ return a.k < b.k ? 1 : -1; });
+  return rows;
+}
+/* Trend from logged rows, newest first: the last 7 logged entries versus
+   the 7 before them. Both windows need at least 4 entries, or there is no
+   honest trend to show — return null and let the caller say so plainly. */
+function normalTrend(rows){
+  const recent = rows.slice(0,7), prior = rows.slice(7,14);
+  if(recent.length < 4 || prior.length < 4) return null;
+  return {
+    recentAvg: avgNums(recent.map(function(r){ return r.v; })),
+    priorAvg: avgNums(prior.map(function(r){ return r.v; })),
+    recentN: recent.length, priorN: prior.length
+  };
+}
+function normalTrendDir(t){
+  const d = t.recentAvg - t.priorAvg;
+  if(d >= 0.3) return "up";
+  if(d <= -0.3) return "down";
+  return "same";
+}
+function normalMoodLine(){
+  const t = normalTrend(normalCheckinRows("mood"));
+  if(!t) return "Not enough check-ins yet to show a trend — it'll fill in as you keep logging.";
+  const head = "Your mood's been averaging " + fmtAvg(t.recentAvg) + " over your last " + t.recentN + " logged check-ins";
+  const dir = normalTrendDir(t);
+  if(dir === "up") return head + " — up from " + fmtAvg(t.priorAvg) + " in the " + t.priorN + " before that.";
+  if(dir === "down") return head + " — down from " + fmtAvg(t.priorAvg) + " in the " + t.priorN + " before that. Dips at this stage are part of the repair, not a verdict.";
+  return head + " — about the same as the stretch before (" + fmtAvg(t.priorAvg) + ").";
+}
+function normalEnergyLine(){
+  const t = normalTrend(normalCheckinRows("energy"));
+  if(!t) return "Not enough check-ins yet to show a trend — it'll fill in as you keep logging.";
+  const head = "Your energy's been averaging " + fmtAvg(t.recentAvg) + "/5 over your last " + t.recentN + " logged check-ins";
+  const dir = normalTrendDir(t);
+  if(dir === "up") return head + " — up from " + fmtAvg(t.priorAvg) + "/5 in the " + t.priorN + " before that.";
+  if(dir === "down") return head + " — down from " + fmtAvg(t.priorAvg) + "/5 in the " + t.priorN + " before that. A heavier patch is common while things rebalance.";
+  return head + " — about the same as the stretch before (" + fmtAvg(t.priorAvg) + "/5).";
+}
+/* Flat days are counted, not averaged: days he marked energy 2 or under,
+   in his last 14 logged check-ins versus the 14 before those. */
+function normalFlatLine(){
+  const rows = normalCheckinRows("energy");
+  const recent = rows.slice(0,14), prior = rows.slice(14,28);
+  if(recent.length < 4 || prior.length < 4) return "Not enough check-ins yet to show this — it'll fill in as you keep logging.";
+  const rc = recent.filter(function(r){ return r.v <= 2; }).length;
+  const pc = prior.filter(function(r){ return r.v <= 2; }).length;
+  if(rc === 0 && pc === 0) return "No flat days (energy 2 or under) in your last " + (recent.length + prior.length) + " logged check-ins. That's a good run.";
+  if(rc < pc) return "Flat days (energy 2 or under) are thinning out: " + rc + " in your last " + recent.length + " logged check-ins, versus " + pc + " in the " + prior.length + " before that.";
+  if(rc > pc) return "You've marked " + rc + " flat days (energy 2 or under) in your last " + recent.length + " logged check-ins, versus " + pc + " in the " + prior.length + " before that. A heavier patch is common at this stage — it lifts.";
+  return "Flat days (energy 2 or under) are holding steady: " + rc + " in your last " + recent.length + " logged check-ins, the same as the " + prior.length + " before that.";
+}
+function normalSleepLine(){
+  const t = normalTrend(normalSleepRows());
+  if(!t) return "Not enough sleep logs yet to show a trend — log a few nights and this fills in.";
+  const head = "You've been averaging " + fmtAvg(t.recentAvg) + " hours over your last " + t.recentN + " logged nights";
+  const dir = normalTrendDir(t);
+  if(dir === "up") return head + " — up from " + fmtAvg(t.priorAvg) + " hours in the " + t.priorN + " before that.";
+  if(dir === "down") return head + " — down from " + fmtAvg(t.priorAvg) + " hours in the " + t.priorN + " before that. Sleep is one of the slowest to settle; it keeps improving.";
+  return head + " — about the same as the stretch before (" + fmtAvg(t.priorAvg) + " hours).";
+}
+function renderIsThisNormal(){
+  const box = $("normalTopics");
+  if(!box) return;
+  const lines = {
+    mood: normalMoodLine(), energy: normalEnergyLine(),
+    flat: normalFlatLine(), sleep: normalSleepLine()
+  };
+  box.innerHTML = NORMAL_TOPICS.map(function(t){
+    const tie = t.tie === "none" ? t.noneText : lines[t.tie];
+    return '<div class="ntopic"><div style="font-weight:700;">' + t.icon + " " + esc(t.title) + "</div>" +
+      t.body.map(function(p){ return "<p>" + esc(p) + "</p>"; }).join("") +
+      '<p class="muted"><b>How it\'s going for you:</b> ' + esc(tie) + "</p></div>";
+  }).join("");
+}
+
 /* Walks from Google Fit (walks.json in the repo, refreshed daily by Buddy boy).
    The service worker fetches walks.json network-first, so fresh numbers show
    up without an app update. Only steps / miles / kcal — nothing else. */
@@ -7246,6 +7390,7 @@ function renderFitness(){
   renderStrength();
   renderGaveBack();
   renderHealthTogether();
+  renderIsThisNormal();
 }
 
 function renderAll(){
@@ -7311,9 +7456,9 @@ setInterval(function(){
 setInterval(function(){ checkChips(); checkCombBadges(); checkLetters(); checkFitnessBadges(); checkSmokeBadges(); checkBodyMilestones(); }, 60000);
 </script>
 <script>
-// PWA (v1.16): offline service worker + install prompt + tap-to-apply updates.
+// PWA (v1.21): offline service worker + install prompt + tap-to-apply updates.
 // Added 2026-10-20. Self-contained: does not modify the main app script.
-const SF_APP_VERSION='1.20';
+const SF_APP_VERSION='1.21';
 try{var _sv=document.getElementById('sfVerSetup'); if(_sv)_sv.textContent=SF_APP_VERSION;}catch(e){}
 let sfReg=null, sfWaiting=null, sfReloading=false, sfPrompt=null;
 function sfShowBanner(){var b=document.getElementById('sfUpdateBanner'); if(b)b.style.display='block';}
