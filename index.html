@@ -266,6 +266,12 @@
   /* journey sections (audit cleanup, Part A) */
   .jsec-h{font-size:.95rem; letter-spacing:.07em; text-transform:uppercase; color:var(--muted); margin:22px 4px 2px;}
   .jsec:first-child .jsec-h{margin-top:6px;}
+  /* collapsible sections (v1.22): tap a section header to open/close it.
+     Closed by default; sections he opens are remembered (sf_open_sections).
+     The closed flag lives on the section wrapper, which renders never touch. */
+  .sec-chev{display:inline-block; width:1.1em;}
+  .jsec-h, .collapse-head{cursor:pointer;}
+  .sec-closed > *:not(.collapse-head){display:none !important;}
   /* "Is this normal?" guide topics */
   .ntopic{padding:12px 0 2px; border-top:1px solid var(--line);}
   .ntopic:first-child{border-top:none; padding-top:2px;}
@@ -410,7 +416,7 @@
 
   <!-- JOURNEY -->
   <section id="tab-journey" class="hidden">
-    <div class="jsec">
+    <div class="jsec" data-sec="journey-celebration">
       <h2 class="jsec-h">&#x1F389; Celebration</h2>
     <div class="card">
       <h2>&#x1F3C6; Next chip</h2>
@@ -466,7 +472,7 @@
 
     </div>
 
-    <div class="jsec">
+    <div class="jsec" data-sec="journey-proof">
       <h2 class="jsec-h">&#x1F4F8; Proof</h2>
     <div class="card">
       <h2>&#x1F399;&#xFE0F; Messages from sober you</h2>
@@ -533,7 +539,7 @@
 
     </div>
 
-    <div class="jsec">
+    <div class="jsec" data-sec="journey-prepare">
       <h2 class="jsec-h">&#x2694;&#xFE0F; Prepare</h2>
     <div class="card" id="battleCard">
       <h2>&#x2694;&#xFE0F; Battle plans</h2>
@@ -585,7 +591,7 @@
 
     </div>
 
-    <div class="jsec">
+    <div class="jsec" data-sec="journey-review">
       <h2 class="jsec-h">&#x1F4CB; Review</h2>
     <div class="card" id="sundayCard">
       <h2>&#x1FA9E; Sunday Review</h2>
@@ -636,7 +642,7 @@
 
     </div>
 
-    <div class="jsec">
+    <div class="jsec" data-sec="journey-bodymoney">
       <h2 class="jsec-h">&#x1F4AA; Body &amp; money</h2>
     <div class="card">
       <h2>&#x1F634; Sleep</h2>
@@ -669,7 +675,7 @@
 
     </div>
 
-    <div class="jsec">
+    <div class="jsec" data-sec="journey-write">
       <h2 class="jsec-h">&#x270D;&#xFE0F; Write</h2>
     <div class="card">
       <h2>&#x2764;&#xFE0F; Reasons wall</h2>
@@ -746,7 +752,7 @@
 
   <!-- FITNESS -->
   <section id="tab-fitness" class="hidden">
-    <div class="jsec">
+    <div class="jsec" data-sec="fitness-move">
       <h2 class="jsec-h">&#x1F3C3; Move</h2>
     <div class="card center">
       <h2>&#x1F3C3; Move your body</h2>
@@ -872,7 +878,7 @@
 
     </div>
 
-    <div class="jsec">
+    <div class="jsec" data-sec="fitness-strength">
       <h2 class="jsec-h">&#x1F4AA; Strength</h2>
     <div class="card">
       <h2>&#x1F4AA; Strength — bodyweight at home</h2>
@@ -899,7 +905,7 @@
 
     </div>
 
-    <div class="jsec">
+    <div class="jsec" data-sec="fitness-body">
       <h2 class="jsec-h">&#x2696;&#xFE0F; Body</h2>
     <div class="card">
       <h2>&#x2696;&#xFE0F; Body — weight &amp; waist</h2>
@@ -944,7 +950,7 @@
 
     </div>
 
-    <div class="jsec">
+    <div class="jsec" data-sec="fitness-gaveback">
       <h2 class="jsec-h">&#x1F389; What sobriety gave back</h2>
     <div class="card">
       <h2>&#x1F389; What sobriety gave back</h2>
@@ -964,7 +970,7 @@
 
     </div>
 
-    <div class="jsec">
+    <div class="jsec" data-sec="fitness-fuel">
       <h2 class="jsec-h">&#x1F37D;&#xFE0F; Fuel</h2>
     <div class="card">
       <h2>&#x1F37D;&#xFE0F; Portion guide — your hand is the measure</h2>
@@ -979,7 +985,7 @@
 
     </div>
 
-    <div class="jsec">
+    <div class="jsec" data-sec="fitness-health">
       <h2 class="jsec-h">&#x1F4C8; Health together</h2>
     <div class="card">
       <h2>&#x1F4C8; Sleep, energy &amp; waist — with your sober days</h2>
@@ -1026,7 +1032,7 @@
         <button id="smokeChangeMode" class="small ghost mt8">Change my plan</button>
       </div>
 
-      <div class="card hidden" id="smokePlanCard">
+      <div class="card hidden" id="smokePlanCard" data-sec="smoke-plan">
         <h2>&#x1F4CB; Quit-day prep</h2>
         <label class="lbl" for="smokeQuitDate">My quit date &amp; time</label>
         <input type="datetime-local" id="smokeQuitDate">
@@ -1035,7 +1041,7 @@
         <div id="smokeChecklist"></div>
       </div>
 
-      <div class="card hidden" id="smokeCutCard">
+      <div class="card hidden" id="smokeCutCard" data-sec="smoke-cut">
         <h2>&#x1F4C9; Cutting down</h2>
         <div class="grid2">
           <div>
@@ -1054,7 +1060,7 @@
         <button id="smokeReadyQuit" class="ghost mt12" style="width:100%;">I'm ready &mdash; set my quit date</button>
       </div>
 
-      <div class="card hidden" id="smokeTaperCard">
+      <div class="card hidden" id="smokeTaperCard" data-sec="smoke-taper">
         <h2>&#x1FA9C; Taper ladder</h2>
         <p class="muted" id="smokeTaperBanner" style="margin:0 0 10px;"></p>
         <div id="smokeTaperList"></div>
@@ -1066,7 +1072,7 @@
         <button id="smokeTaperToggle" class="small ghost mt12">Pause ladder</button>
       </div>
 
-      <div class="card">
+      <div class="card" id="smokeCravingCard" data-sec="smoke-craving">
         <h2>&#x1F30A; Craving hitting?</h2>
         <p class="muted">Most cravings peak and pass in a few minutes. Ride this one out — the 10-minute urge timer lives on the SOS tab.</p>
         <div class="row mt12" style="justify-content:center;">
@@ -1077,11 +1083,11 @@
         <p class="muted" id="smokeCopingList" style="margin:0;"></p>
       </div>
 
-      <div class="card hidden" id="smokeMsCard">
+      <div class="card hidden" id="smokeMsCard" data-sec="smoke-butts">
         <h2>&#x1F6AC; Butts earned</h2>
         <div id="smokeMsList"></div>
       </div>
-      <div class="card hidden" id="smokeBadgeCard">
+      <div class="card hidden" id="smokeBadgeCard" data-sec="smoke-badges">
         <h2>&#x1F3C5; Butt shelf</h2>
         <div class="shelf" id="smokeBadgeShelf"></div>
       </div>
@@ -1099,7 +1105,7 @@
         <div id="smokeStrip" class="mt12"></div>
       </div>
 
-      <div class="card hidden" id="smokeSlipCard">
+      <div class="card hidden" id="smokeSlipCard" data-sec="smoke-slip">
         <h2>&#x1F49B; Tough days &amp; recommitments</h2>
         <div id="smokeSlipOffer" class="hidden mt12" style="background:var(--bg2); border:1px solid var(--line); border-radius:12px; padding:14px; text-align:center;">
           <p style="margin:0 0 10px;"><b>That took honesty to log.</b><br><span class="muted">Want to walk through it? No judgment &mdash; just reflection.</span></p>
@@ -1125,18 +1131,18 @@
         <div id="smokeSlipList" class="mt12"></div>
       </div>
 
-      <div class="card">
+      <div class="card" id="smokeHealthCard" data-sec="smoke-health">
         <h2>&#x1FAC1; What gets better</h2>
         <p class="muted">Typical things people notice after quitting &mdash; everyone's timeline is their own.</p>
         <div id="smokeHealthList" style="padding-left:20px;"></div>
       </div>
 
-      <div class="card">
+      <div class="card" id="smokeTriggersCard" data-sec="smoke-triggers">
         <h2>&#x1F50D; My smoking triggers</h2>
         <div id="smokePatternBars"></div>
       </div>
 
-      <div class="card">
+      <div class="card" id="smokeReasonsCard" data-sec="smoke-reasons">
         <h2>&#x1F9E1; Why I'm quitting smoking</h2>
         <div id="smokeReasonWall"></div>
         <div class="row mt8">
@@ -1219,7 +1225,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" id="mtgBadgeCard" data-sec="meetings-badges">
       <h2>&#x1F3C6; Trophy shelf</h2>
       <div class="shelf" id="badgeShelf"></div>
     </div>
@@ -1240,14 +1246,14 @@
       <button id="mtgAdd" class="mt12" style="width:100%;">Log meeting</button>
     </div>
 
-    <div class="card" id="pocketCard">
+    <div class="card" id="pocketCard" data-sec="meetings-pocket">
       <h2>&#x1FA91; Pocket Meeting</h2>
       <p class="muted" style="margin-top:0;">A 10-minute meeting you can run anywhere — no room, no ride, just you.</p>
       <p class="muted" id="pocketLast" style="margin-top:0;"></p>
       <button id="pocketOpen" style="width:100%;">Start a meeting</button>
     </div>
 
-    <div class="card">
+    <div class="card" id="mtgListCard" data-sec="meetings-log">
       <h2>&#x1F4CB; Meeting log</h2>
       <div id="mtgList"></div>
     </div>
@@ -1314,13 +1320,13 @@
 
   <!-- SETTINGS -->
   <section id="tab-settings" class="hidden">
-    <div class="card">
+    <div class="card" id="setUpdatesCard" data-sec="settings-updates">
       <h2>&#x1F4F2; App updates</h2>
       <p class="muted">You are running <strong>Soberforever v<span id="sfVerSetup">1.0</span></strong>. Updates download automatically in the background — when one is ready, a banner appears at the top of the app and one tap applies it. Updates never touch your saved data.</p>
       <button id="sfCheckBtn" class="small ghost">Check for updates</button>
       <p class="small" id="sfUpdStatus"></p>
     </div>
-    <div class="card">
+    <div class="card" id="setMainCard" data-sec="settings-main">
       <h2>&#x2699;&#xFE0F; Settings</h2>
       <label class="lbl" for="setDate">Sobriety start date &amp; time</label>
       <input type="datetime-local" id="setDate">
@@ -1375,7 +1381,7 @@
       <button id="setSave" class="mt12" style="width:100%;">Save settings</button>
     </div>
 
-    <div class="card">
+    <div class="card" id="setAccessCard" data-sec="settings-access">
       <h2>&#x267F; Accessibility</h2>
       <label class="row" style="gap:10px; cursor:pointer;">
         <input type="checkbox" id="setReduceMotion" style="width:auto; margin:0;">
@@ -1388,7 +1394,7 @@
       </select>
     </div>
 
-    <div class="card">
+    <div class="card" id="setRemindersCard" data-sec="settings-reminders">
       <h2>&#x1F4C5; Reminders</h2>
       <p class="muted">Download calendar reminders that repeat daily. They work with any calendar app.</p>
       <div class="row">
@@ -1397,7 +1403,7 @@
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" id="setSmokeCard" data-sec="settings-smoke">
       <h2>&#x1F6AD; Smoke-free settings</h2>
       <div id="setSmokeLadderWrap">
         <p class="muted" id="setSmokeLadderText" style="margin:0 0 10px;"></p>
@@ -1417,7 +1423,7 @@
       <p class="muted mt8" style="margin-bottom:0;">Change your smoking plan (mode, quit date, daily limit) on the Smoke-free tab.</p>
     </div>
 
-    <div class="card">
+    <div class="card" id="setDataCard" data-sec="settings-data">
       <h2>&#x1F4BE; Your data</h2>
       <p class="muted">Everything lives in this browser only. Export a backup any time.</p>
       <div class="row">
@@ -3169,7 +3175,7 @@ $("psResults").addEventListener("click", function(e){
   if(!t) return;
   if(t.getAttribute("data-ps-write")){
     const jb = $("jBody");
-    if(jb){ jb.scrollIntoView({behavior:"smooth", block:"center"}); jb.focus(); }
+    if(jb){ ensureSectionOpen(jb); jb.scrollIntoView({behavior:"smooth", block:"center"}); jb.focus(); }
     return;
   }
   const pid = t.getAttribute("data-ps-play");
@@ -3558,6 +3564,7 @@ function bpStartEdit(p){
   $("bpCancel").classList.remove("hidden");
   renderBattlePlans();
   const card = $("battleCard");
+  if(card) ensureSectionOpen(card);
   if(card && card.scrollIntoView) card.scrollIntoView({behavior: state.reduceMotion ? "auto" : "smooth", block:"start"});
 }
 function renderBattlePlans(){
@@ -3894,6 +3901,7 @@ $("refusalRun").addEventListener("click", function(){ refusalNext(); renderRefus
 $("sosRepsBtn").addEventListener("click", function(){
   switchTab("journey");
   const card = $("refusalCard");
+  if(card) ensureSectionOpen(card);
   if(card && card.scrollIntoView) card.scrollIntoView({behavior: state.reduceMotion ? "auto" : "smooth", block:"start"});
 });
 
@@ -6382,6 +6390,7 @@ $("smokeReadyQuit").addEventListener("click", function(){
   smk().mode = "quit";
   smk().quitDate = null;
   saveState(); renderSmoke();
+  ensureSectionOpen($("smokePlanCard"));
   $("smokePlanCard").scrollIntoView();
 });
 /* One urge timer (audit cleanup, Part A item 5): the Smoke tab's 5-minute
@@ -6781,6 +6790,7 @@ function editActivity(id){
   $("actNotes").value = a.notes || "";
   $("actFormTitle").textContent = "\u270F\uFE0F Edit activity";
   $("actCancel").classList.remove("hidden");
+  ensureSectionOpen($("actFormTitle"));
   $("actFormTitle").scrollIntoView();
 }
 $("fitQuick").addEventListener("click", function(){
@@ -6788,6 +6798,7 @@ $("fitQuick").addEventListener("click", function(){
   $("actDate").value = todayKey();
   $("actType").value = "Walk";
   switchTab("fitness");
+  ensureSectionOpen($("actFormTitle"));
   $("actFormTitle").scrollIntoView();
 });
 $("actCancel").addEventListener("click", function(){ resetActForm(); });
@@ -7305,6 +7316,76 @@ function loadCollapsedWeeks(){
 function saveCollapsedWeeks(c){
   try{ localStorage.setItem("sf_collapsed_weeks", JSON.stringify(c)); }catch(e){}
 }
+
+/* ============ COLLAPSIBLE SECTIONS (v1.22) ============
+   Generalizes the Walks week-header pattern above: tap a section header
+   to open/close the whole section, and the choice is remembered in its
+   own localStorage key, same style as sf_collapsed_weeks. Per James
+   (Nov 13), sections start CLOSED — the map records the ones he has
+   opened. The closed flag lives as a class on the section wrapper (the
+   .jsec div or the card itself), which render functions never touch, so
+   re-renders and the periodic refresh can't reset it. Today and SOS are
+   never collapsed: nothing needed in a hurry starts hidden. */
+function loadOpenSections(){
+  try{ return JSON.parse(localStorage.getItem("sf_open_sections") || "{}") || {}; }catch(e){ return {}; }
+}
+function saveOpenSections(o){
+  try{ localStorage.setItem("sf_open_sections", JSON.stringify(o)); }catch(e){}
+}
+function setSectionClosed(wrap, head, closed){
+  wrap.classList.toggle("sec-closed", closed);
+  head.setAttribute("aria-expanded", closed ? "false" : "true");
+  var chev = head.querySelector(".sec-chev");
+  if(chev) chev.innerHTML = closed ? '&#9656;' : '&#9662;';
+}
+function toggleSection(wrap, head){
+  var nowClosed = !wrap.classList.contains("sec-closed");
+  setSectionClosed(wrap, head, nowClosed);
+  var key = wrap.getAttribute("data-sec");
+  if(key){
+    var o = loadOpenSections();
+    if(nowClosed) delete o[key]; else o[key] = true;
+    saveOpenSections(o);
+  }
+}
+function makeCollapsible(wrap, head){
+  if(!wrap || !head || head.getAttribute("data-collapse-init")) return;
+  head.setAttribute("data-collapse-init", "1");
+  head.classList.add("collapse-head");
+  head.setAttribute("role", "button");
+  head.setAttribute("tabindex", "0");
+  var chev = document.createElement("span");
+  chev.className = "sec-chev";
+  chev.setAttribute("aria-hidden", "true");
+  head.insertBefore(chev, head.firstChild);
+  var key = wrap.getAttribute("data-sec");
+  var open = !!(key && loadOpenSections()[key]);
+  setSectionClosed(wrap, head, !open);
+  head.addEventListener("click", function(){ toggleSection(wrap, head); });
+  head.addEventListener("keydown", function(e){
+    if(e.key === "Enter" || e.key === " "){ e.preventDefault(); toggleSection(wrap, head); }
+  });
+}
+function initCollapsibleSections(){
+  document.querySelectorAll(".jsec[data-sec]").forEach(function(sec){
+    makeCollapsible(sec, sec.querySelector(":scope > .jsec-h"));
+  });
+  document.querySelectorAll(".card[data-sec]").forEach(function(card){
+    makeCollapsible(card, card.querySelector(":scope > h2"));
+  });
+}
+/* Programmatic jumps (SOS buttons, edit flows) open the target's section
+   first, so the feature they point at is never left hidden. */
+function ensureSectionOpen(el){
+  var n = el;
+  while(n && n !== document.body){
+    if(n.getAttribute && n.getAttribute("data-sec") && n.classList && n.classList.contains("sec-closed")){
+      var head = n.querySelector(":scope > .collapse-head");
+      if(head) toggleSection(n, head);
+    }
+    n = n.parentElement;
+  }
+}
 function renderWalks(){
   var list = $("walkList");
   if(!list) return;
@@ -7443,6 +7524,7 @@ function renderAll(){
   setMtgMode("zoom");
 }
 maybeOnboard();
+initCollapsibleSections();
 renderAll();
 checkChips();
 checkCombBadges();
@@ -7456,9 +7538,9 @@ setInterval(function(){
 setInterval(function(){ checkChips(); checkCombBadges(); checkLetters(); checkFitnessBadges(); checkSmokeBadges(); checkBodyMilestones(); }, 60000);
 </script>
 <script>
-// PWA (v1.21): offline service worker + install prompt + tap-to-apply updates.
+// PWA (v1.22): offline service worker + install prompt + tap-to-apply updates.
 // Added 2026-10-20. Self-contained: does not modify the main app script.
-const SF_APP_VERSION='1.21';
+const SF_APP_VERSION='1.22';
 try{var _sv=document.getElementById('sfVerSetup'); if(_sv)_sv.textContent=SF_APP_VERSION;}catch(e){}
 let sfReg=null, sfWaiting=null, sfReloading=false, sfPrompt=null;
 function sfShowBanner(){var b=document.getElementById('sfUpdateBanner'); if(b)b.style.display='block';}
