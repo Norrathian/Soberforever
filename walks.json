@@ -1,6 +1,13 @@
 {
  "days": [
   {
+   "date": "2026-11-18",
+   "kcal": 466,
+   "miles": 0.15,
+   "partial": true,
+   "steps": 329
+  },
+  {
    "date": "2026-11-17",
    "kcal": 1886,
    "miles": 0.35,
@@ -239,5 +246,5 @@
  ],
  "note": "Per-day totals only: steps, miles, kcal.",
  "source": "Google Fit via Health Connect",
- "updated": "2026-11-18T10:02:36-08:00"
+ "updated": "2026-11-18T19:56:58-08:00"
 }
