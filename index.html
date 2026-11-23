@@ -276,6 +276,17 @@
   .ntopic{padding:12px 0 2px; border-top:1px solid var(--line);}
   .ntopic:first-child{border-top:none; padding-top:2px;}
   .ntopic p{margin:6px 0;}
+  /* Sober Advent (v1.23): Dec 1-25 doors on the Today tab */
+  .advgrid{display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin-top:10px;}
+  .adv-door{padding:10px 2px; border-radius:10px; border:1px solid var(--line); background:var(--bg2);
+    color:var(--text); font-weight:700; font-size:1rem; box-shadow:none; cursor:pointer; text-align:center;}
+  .adv-door .adv-star{display:block; font-size:.75rem; line-height:1.2; margin-top:2px;}
+  .adv-door.locked{opacity:.45; cursor:default; font-weight:600;}
+  .adv-door.open{border-color:var(--accent); color:var(--accent);}
+  .adv-door.done{background:var(--accent); border-color:var(--accent); color:#fff;}
+  .advpanel{margin-top:12px; background:var(--bg2); border:1px solid var(--line); border-radius:12px; padding:14px; text-align:left;}
+  .advpanel h3{margin:0 0 6px;}
+  .advpanel p{margin:6px 0;}
   @media print{
     body{padding-bottom:0;}
     body > *:not(#reportOverlay){display:none !important;}
@@ -344,6 +355,11 @@
 
     <div class="card hidden" id="twoQuitsStripCard">
       <p class="center" style="margin:0;" id="twoQuitsStripText"></p>
+    </div>
+
+    <div class="card hidden" id="adventCard">
+      <h2>&#x1F384; Sober Advent</h2>
+      <div id="adventBody"></div>
     </div>
 
     <div class="card">
@@ -1627,7 +1643,7 @@ function defaultState(){
     pocketIdx:0,
     weeklyFocus:null, sundayReviews:[], dailyPhotos:[],
     activities:[], fitnessGoals:{daysPerWeek:0,distPerWeek:0}, distUnit:"mi",
-    smoke:defaultSmoke()
+    smoke:defaultSmoke(), advent:{}
   };
 }
 /* Audit cleanup (Part A, item 1): the old "Proof it's working" wall
@@ -6594,6 +6610,263 @@ function renderTwoQuitsStrip(){
   txt.textContent = msg;
   card.classList.remove("hidden");
 }
+/* ============ SOBER ADVENT (v1.23) ============
+   A Dec 1-25 advent calendar on the Today tab for his first sober (and
+   smoke-free) Christmas. Visible Nov 25 - Jan 7 only: teaser before Dec 1,
+   doors through December, keepsake leading from Dec 25. Door N unlocks on
+   Dec N; missed doors can be opened late - no streaks, no pressure, no
+   "you missed" language. Opened/collected state lives in state.advent
+   (defaults-merged), so it rides the normal JSON export/import. The open
+   panel is tracked in module variables, so re-renders (renderAll, the 1s
+   ticker) never reset it. Day counts reuse daysElapsed()/smokeDays(). */
+const ADVENT_DAYS = [
+  {win:"Notice how your coffee tastes this morning. Really taste it.",
+   moment:"First door of the season. From here to Christmas, one small good thing a day.",
+   reason:"You get to be fully here for this Christmas. That's the whole point."},
+  {win:"Step outside for two minutes and breathe the cold air in deep.",
+   moment:"Somewhere tonight there's a house with lights worth slowing down for.",
+   reason:"Clear head, clear lungs \u2014 mornings are starting to feel like yours again."},
+  {win:"Put one small thing in order \u2014 a drawer, a shelf, the truck cab. Ten minutes, tops.",
+   moment:"A Christmas song you loved as a kid still knows all your buttons. Let it play.",
+   reason:"A calm house starts with one calm corner. You're building both."},
+  {win:"Send one thank-you text you've been meaning to send.",
+   moment:"Movie night counts double in December \u2014 blanket, something warm to drink, nowhere to be.",
+   reason:"People are getting the real you back. That's not a small thing."},
+  {win:"Take the long way past the lights instead of the fast way home.",
+   moment:"Small towns do Christmas right \u2014 a parade, a main street, everybody out.",
+   reason:"You're not watching the season from the outside anymore. You're in it."},
+  {win:"Drink a full glass of water before your coffee. Small, done, banked.",
+   moment:"Slow Sunday energy: coffee, something warm from the oven, no rush anywhere.",
+   reason:"Your body is on your side now. Keep meeting it halfway."},
+  {win:"Write down one good thing about this week. One line is enough.",
+   moment:"A week into December \u2014 the tree's up or getting there, and the house is starting to smell like it.",
+   reason:"Good things are easier to spot when you're awake for your own life."},
+  {win:"Stretch for five minutes \u2014 neck, shoulders, back, wherever the day sits.",
+   moment:"Somebody in the family has a favorite ornament story. Ask them to tell it.",
+   reason:"You're looking after the one body that has to carry all the Christmases still coming."},
+  {win:"Leave your phone in another room for one whole meal.",
+   moment:"Dinner tastes better when nobody's scrolling through it.",
+   reason:"Being present is the gift everybody actually remembers."},
+  {win:"Do one kind thing nobody will ever find out about.",
+   moment:"The music's everywhere now \u2014 store speakers, car radio, the neighbor's porch.",
+   reason:"Quiet good deeds stack up into a different kind of person. You're becoming him."},
+  {win:"Get to bed a little earlier tonight. Let tomorrow start rested.",
+   moment:"The best Christmas movies are the ones that leave the room quiet at the end.",
+   reason:"Rest is part of the work, not a prize for finishing it."},
+  {win:"Make something warm \u2014 tea, cocoa, cider \u2014 and sit with it. No rushing.",
+   moment:"Wrapping paper, tape that won't cooperate, a movie on in the background. Peak December.",
+   reason:"You can enjoy a pause now instead of needing to escape it."},
+  {win:"Say the honest thing in one conversation today \u2014 kindly and plainly.",
+   moment:"Two weeks out: the lists, the cards, the planning. It doesn't have to be perfect to be good.",
+   reason:"Clear is kind, and you're getting better at clear."},
+  {win:"Do one small thing today that's just for you.",
+   moment:"December birthdays get the whole month lit up. Not a bad trade.",
+   reason:"Another year \u2014 and this one is actually yours."},
+  {win:"Notice one smell today \u2014 pine, rain, coffee, woodsmoke \u2014 and actually enjoy it.",
+   moment:"Ten days out. The lights on a morning walk look different before sunrise.",
+   reason:"Your senses are coming back online, one by one. Let them."},
+  {win:"Set one small thing down \u2014 a grudge, a worry, an old story \u2014 just for today.",
+   moment:"Some gifts are just time. An hour with family beats anything in a box.",
+   reason:"Carrying less makes the road a lot easier to walk."},
+  {win:"Move ten minutes more than usual \u2014 an extra lap, the far mailbox, anything.",
+   moment:"Sing one Christmas song out loud today. Kitchen counts. Car counts double.",
+   reason:"Stronger every week, in ways you can feel on the stairs."},
+  {win:"Check on one person who might be having a harder December than you.",
+   moment:"The week before Christmas has its own weather \u2014 busy, bright, a little much. Stepping back to breathe is allowed.",
+   reason:"You've got something to offer now: a steady hand and a clear head."},
+  {win:"Eat one meal slowly enough to taste all of it.",
+   moment:"Baking smells are a love language. So is showing up for the tasting.",
+   reason:"Food's getting better, sleep's getting better \u2014 the returns keep arriving."},
+  {win:"Think back to an October morning, then just get on with today.",
+   moment:"Last weekend before Christmas, and the lights are at their best.",
+   reason:"You don't have to win the whole season. Just today. You've gotten good at today."},
+  {win:"Pick tomorrow's one small plan tonight, so the morning starts easy.",
+   moment:"The longest night of the year \u2014 and you're spending it clear-eyed, with music if you want it.",
+   reason:"Even the longest night ends. You know that better than most."},
+  {win:"Leave one thing unsaid that didn't need saying. Enjoy the quiet after.",
+   moment:"Three days out. Somebody in your house is excited about Christmas \u2014 borrow some of it.",
+   reason:"Peace in a house is built out of small mercies like that."},
+  {win:"On your walk, count the lit-up houses. Silly, and it works.",
+   moment:"Christmas Eve Eve \u2014 the anticipation is half the holiday. Always has been.",
+   reason:"You're about to have a Christmas you can remember every minute of."},
+  {win:"Set out tomorrow's mug tonight. Small kindness to morning-you.",
+   moment:"Christmas Eve: family close, food coming, a movie if there's time. Soak it in.",
+   reason:"Everything you did this fall was so tonight could feel like this."},
+  {win:"Before anything else this morning: coffee, quiet, and one full minute of just being here.",
+   moment:"Your first sober Christmas morning. The lights, the family, the whole day \u2014 and you're present for all of it.",
+   reason:"This is what the hard days were buying. Merry Christmas."}
+];
+let adventOpenDay = 0;  /* day number whose panel is showing (0 = none) */
+let adventNotice = "";  /* one-line note shown after a locked-door tap */
+function adventPhase(){
+  const now = new Date(), m = now.getMonth(), d = now.getDate();
+  if(m === 10 && d >= 25) return "teaser";
+  if(m === 11 && d < 25) return "active";
+  if(m === 11 || (m === 0 && d <= 7)) return "keepsake";
+  return null;
+}
+function adventUnlockedThrough(phase){
+  if(phase === "active") return new Date().getDate();
+  if(phase === "keepsake") return 25;
+  return 0;
+}
+function adventRec(n){
+  const a = (state.advent && typeof state.advent === "object") ? state.advent[n] : null;
+  return (a && typeof a === "object") ? a : null;
+}
+function adventOpenedCount(){
+  let n = 0;
+  for(let i=1;i<=25;i++){ const r = adventRec(i); if(r && r.opened) n++; }
+  return n;
+}
+function adventKeepsakeHtml(){
+  const opened = adventOpenedCount();
+  const alc = daysElapsed(), smkD = smokeDays();
+  return '<div class="advpanel" style="margin-top:0;"><h3>\uD83C\uDF84 Your first sober Christmas</h3>' +
+    "<p>You opened <b>" + opened + " of 25</b> doors this December.</p>" +
+    "<p><b>" + alc + (alc === 1 ? " day" : " days") + " sober</b> \u2022 <b>" + smkD + (smkD === 1 ? " day" : " days") + " smoke-free</b> \u2014 both quits, right through Christmas.</p>" +
+    '<button type="button" class="small" data-advkeepsake="1">Download keepsake PNG</button></div>';
+}
+function renderAdvent(){
+  const card = $("adventCard"), body = $("adventBody");
+  if(!card || !body) return;
+  const phase = adventPhase();
+  if(!phase){ card.classList.add("hidden"); return; }
+  card.classList.remove("hidden");
+  const through = adventUnlockedThrough(phase);
+  let h = "";
+  if(phase === "keepsake") h += adventKeepsakeHtml();
+  if(phase === "teaser"){
+    const now = new Date();
+    const days = Math.round((new Date(now.getFullYear(), 11, 1) - new Date(now.getFullYear(), 10, now.getDate())) / 86400000);
+    h += '<p class="muted" style="margin-top:0;">25 little doors, one for each day to Christmas \u2014 a tiny win to collect, a small moment of the season, and a reason for the day. Your first sober Christmas gets its own countdown.</p>' +
+      '<p class="center" style="margin-bottom:2px;"><b>Sober Advent starts December 1</b> \u2014 ' + (days === 1 ? "tomorrow!" : "in " + days + " days.") + "</p>";
+  } else if(phase === "active"){
+    h += '<p class="muted" style="margin-top:0;">One door a day, all the way to Christmas. Missed a day? Open it whenever \u2014 it will be right here waiting.</p>';
+  }
+  h += '<div class="advgrid">';
+  for(let n=1;n<=25;n++){
+    const rec = adventRec(n);
+    const opened = !!(rec && rec.opened);
+    const locked = n > through;
+    let cls = "adv-door";
+    if(locked) cls += " locked";
+    else if(opened) cls += " done";
+    else if(phase === "active" && n === through) cls += " open";
+    h += '<button type="button" class="' + cls + '" data-advday="' + n + '" aria-label="December ' + n + (locked ? ", locked" : "") + '">' + n +
+      (opened ? '<span class="adv-star">\u2605</span>' : (locked ? '<span class="adv-star">\uD83D\uDD12</span>' : "")) + "</button>";
+  }
+  h += "</div>";
+  if(adventOpenDay >= 1 && adventOpenDay <= through){
+    const c = ADVENT_DAYS[adventOpenDay-1], rec = adventRec(adventOpenDay);
+    const collected = !!(rec && rec.collected);
+    h += '<div class="advpanel"><h3>December ' + adventOpenDay + "</h3>" +
+      '<p><b>\uD83C\uDF81 Today\u2019s tiny win:</b> ' + esc(c.win) + "</p>" +
+      '<p><b>\uD83C\uDF84 The season:</b> ' + esc(c.moment) + "</p>" +
+      '<p><b>\u2764\uFE0F For today:</b> ' + esc(c.reason) + "</p>" +
+      (collected
+        ? '<p class="muted" style="margin-bottom:0;">\u2605 Collected \u2014 banked in your December.</p>'
+        : '<button type="button" class="small" data-advcollect="' + adventOpenDay + '">Collect this win</button>') +
+      "</div>";
+  } else if(adventNotice){
+    h += '<p class="muted center" style="margin:12px 0 0;">' + esc(adventNotice) + "</p>";
+  }
+  body.innerHTML = h;
+}
+function adventDoorTap(n){
+  const phase = adventPhase();
+  if(!phase) return;
+  if(n > adventUnlockedThrough(phase)){
+    adventOpenDay = 0;
+    adventNotice = "That door opens on December " + n + " \u2014 one day at a time.";
+    renderAdvent();
+    return;
+  }
+  adventNotice = "";
+  adventOpenDay = n;
+  if(!state.advent || typeof state.advent !== "object") state.advent = {};
+  const rec = adventRec(n) || {};
+  if(!rec.opened){ rec.opened = Date.now(); state.advent[n] = rec; saveState(); }
+  renderAdvent();
+}
+function adventCollect(n){
+  if(!state.advent || typeof state.advent !== "object") state.advent = {};
+  const rec = adventRec(n) || {};
+  if(!rec.opened) rec.opened = Date.now();
+  rec.collected = true;
+  state.advent[n] = rec;
+  saveState();
+  renderAdvent();
+}
+/* Keepsake PNG: same canvas pattern as the story card download. */
+function downloadAdventKeepsake(){
+  const THEMES = {
+    dark:    {bg1:"#0f172a", bg2:"#1c2942", a1:"#f59e0b", a2:"#38bdf8", text:"#f1f5f9", muted:"#94a3b8"},
+    sunrise: {bg1:"#fff7ed", bg2:"#ffedd5", a1:"#ea580c", a2:"#d97706", text:"#431407", muted:"#b45309"},
+    ocean:   {bg1:"#ecfeff", bg2:"#cffafe", a1:"#0891b2", a2:"#0284c7", text:"#083344", muted:"#0e7490"}
+  };
+  const th = THEMES[state.theme] || THEMES.dark;
+  const opened = adventOpenedCount();
+  const alc = daysElapsed(), smkD = smokeDays();
+  const S = 1080;
+  const cv = document.createElement("canvas");
+  cv.width = S; cv.height = S;
+  const x = cv.getContext("2d");
+  const g = x.createLinearGradient(0, 0, S, S);
+  g.addColorStop(0, th.bg1); g.addColorStop(1, th.bg2);
+  x.fillStyle = g; x.fillRect(0, 0, S, S);
+  x.strokeStyle = th.a1; x.lineWidth = 8;
+  x.beginPath(); x.arc(S/2, S/2, 430, 0, Math.PI*2); x.stroke();
+  x.textAlign = "center";
+  x.font = "110px sans-serif";
+  x.fillText("\uD83C\uDF84", S/2, 235);
+  x.fillStyle = th.text;
+  x.font = "800 82px sans-serif";
+  x.fillText("MY FIRST", S/2, 375);
+  x.fillText("SOBER CHRISTMAS", S/2, 475);
+  x.font = "54px sans-serif";
+  const lines = [
+    opened + " of 25 advent doors opened",
+    alc + (alc === 1 ? " day sober" : " days sober"),
+    smkD + (smkD === 1 ? " day smoke-free" : " days smoke-free"),
+    "Christmas 2026"
+  ];
+  let y = 600;
+  lines.forEach(function(l){ x.fillText(l, S/2, y); y += 80; });
+  x.strokeStyle = th.a1; x.lineWidth = 4;
+  x.beginPath(); x.moveTo(S/2 - 150, y + 10); x.lineTo(S/2 + 150, y + 10); x.stroke();
+  x.fillStyle = th.a1;
+  x.font = "700 58px sans-serif";
+  x.fillText("SOBERFOREVER", S/2, y + 75);
+  x.fillStyle = th.muted;
+  x.font = "italic 44px sans-serif";
+  x.fillText("one day at a time", S/2, y + 135);
+  function done(blob){
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "soberforever-first-christmas.png";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 2000);
+  }
+  if(cv.toBlob){ cv.toBlob(function(b){ if(b) done(b); }, "image/png"); }
+  else {
+    const raw = atob(cv.toDataURL("image/png").split(",")[1]);
+    const arr = new Uint8Array(raw.length);
+    for(let i=0;i<raw.length;i++) arr[i] = raw.charCodeAt(i);
+    done(new Blob([arr], {type:"image/png"}));
+  }
+}
+$("adventBody").addEventListener("click", function(e){
+  let t = e.target;
+  while(t && t.getAttribute){
+    const day = t.getAttribute("data-advday");
+    if(day){ adventDoorTap(+day); return; }
+    const col = t.getAttribute("data-advcollect");
+    if(col){ adventCollect(+col); return; }
+    if(t.getAttribute("data-advkeepsake")){ downloadAdventKeepsake(); return; }
+    t = t.parentNode;
+  }
+});
 /* Celebrate a newly reached combined milestone once, reusing the
    celebrated-IDs pattern (comb1, comb7, ...). Earned state is always
    derived from the count in renderTwoQuits, so old saves show correctly
@@ -7508,6 +7781,7 @@ function renderAll(){
   renderCopingList();
   renderTwoQuits();
   renderTwoQuitsStrip();
+  renderAdvent();
   renderPatterns();
   renderPatternTags();
   renderWeight();
@@ -7538,9 +7812,9 @@ setInterval(function(){
 setInterval(function(){ checkChips(); checkCombBadges(); checkLetters(); checkFitnessBadges(); checkSmokeBadges(); checkBodyMilestones(); }, 60000);
 </script>
 <script>
-// PWA (v1.22): offline service worker + install prompt + tap-to-apply updates.
+// PWA (v1.23): offline service worker + install prompt + tap-to-apply updates.
 // Added 2026-10-20. Self-contained: does not modify the main app script.
-const SF_APP_VERSION='1.22';
+const SF_APP_VERSION='1.23';
 try{var _sv=document.getElementById('sfVerSetup'); if(_sv)_sv.textContent=SF_APP_VERSION;}catch(e){}
 let sfReg=null, sfWaiting=null, sfReloading=false, sfPrompt=null;
 function sfShowBanner(){var b=document.getElementById('sfUpdateBanner'); if(b)b.style.display='block';}
